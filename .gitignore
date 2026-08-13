@@ -7,5 +7,7 @@ data/
 .venv/
 __pycache__/
 *.pyc
+build/
+*.egg-info/
 node_modules/
 .DS_Store
