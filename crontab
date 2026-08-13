@@ -1,0 +1,5 @@
+# supercronic crontab — runs inside the long-running container.
+# Fetch cadence matches the provider config default (~6h); export is
+# batched daily, never per-fetch.
+0 */6 * * * status-quo fetch
+30 2 * * * status-quo export

@@ -1,0 +1,15 @@
+services:
+  status-quo:
+    build: .
+    restart: unless-stopped
+    environment:
+      - STATUS_QUO_HF_DATASET_REPO=${STATUS_QUO_HF_DATASET_REPO}
+      - HF_TOKEN=${HF_TOKEN}
+      - HEALTHCHECKS_PING_URL=${HEALTHCHECKS_PING_URL}
+      - STATUS_QUO_DB_PATH=/data/status-quo.db
+      - STATUS_QUO_STATUS_JSON_PATH=/data/status.json
+    volumes:
+      - status-quo-data:/data
+
+volumes:
+  status-quo-data:

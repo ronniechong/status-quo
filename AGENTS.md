@@ -11,16 +11,19 @@ operating cost, and durable off-host storage so the compute host stays
 disposable.
 
 ## Repository layout
-- `src/` — collection, tagging, and pipeline code
+- `src/status_quo/` — collection, tagging, and pipeline code
+- `crontab` — supercronic schedule (runs inside the container)
 - `.github/workflows/` — CI (content added once there's code to run)
 
 ## Commands
-- **Install:** `pip install -r requirements.txt` (or via `pyproject.toml`, once dependencies are added)
-- **Run dev:** TBD — added once the pipeline entrypoint exists
+- **Install:** `pip install .`
+- **Run one fetch cycle:** `status-quo fetch`
+- **Run one export batch:** `status-quo export`
 - **Test:** TBD — added once tests exist
 - **Lint:** TBD
 - **Typecheck:** N/A (Python, no static typechecker configured yet)
 - **Build:** `docker build .`
+- **Run (long-lived, scheduled):** `docker compose up -d --build` (see README)
 
 ## Verified facts
 - The primary structured status-page API shape (`/api/v2/incidents.json`) has
@@ -39,13 +42,13 @@ disposable.
 | Decision | Choice | Revisit if |
 |---|---|---|
 | Pipeline language | Python | A single-language (TS) stack becomes strongly preferred once the dashboard is built |
-| Runtime shape | Scheduled job in a Docker container (exits between runs), not a long-running process | A genuine need for an in-process health-check endpoint emerges |
-| Scheduler mechanism (cron vs. systemd timer) | Not yet decided | Decided when the collection milestone is scoped |
+| Runtime shape | Long-running container, not one that exits between runs | Memory usage grows measurably over weeks of running, or migration lands on a platform with native scheduling |
+| Scheduler mechanism | supercronic running inside the container | Cadence drops below ~1h, where a systemd timer's catch-up-after-downtime semantics start to matter more |
 | Durable storage | Two-tier: local SQLite (rolling window, droppable/rebuildable) + HuggingFace Parquet (source of truth, off-host, private) | Not expected to revisit |
 | LLM provider/model | Groq, `openai/gpt-oss-120b` | Cost or accuracy regressions observed in production use |
 
 ## Security invariants (standing rules — a violation is never a refactor)
-1. Secrets (the Groq API key, `GROQ_API_KEY`) are supplied via environment
+1. Secrets (`GROQ_API_KEY`, `HF_TOKEN`) are supplied via environment
    only — never committed, never hardcoded, never written to a file inside
    this repo.
 2. `gitleaks` runs as a pre-commit hook; a failing scan blocks the commit,

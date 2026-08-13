@@ -3,8 +3,17 @@ name = "status-quo"
 version = "0.1.0"
 description = "Aggregates and interprets public status-page incident data across SaaS providers."
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "huggingface_hub>=0.24",
+    "pyarrow>=17",
+]
+
+[project.scripts]
+status-quo = "status_quo.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
