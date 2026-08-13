@@ -23,11 +23,13 @@ from huggingface_hub import HfApi
 
 from status_quo import db
 from status_quo.cycle import DEFAULT_DB_PATH
+from status_quo.observability import log_line, ping_healthchecks
 
 logger = logging.getLogger("status_quo.export_hf")
 
 HF_DATASET_REPO = os.environ.get("STATUS_QUO_HF_DATASET_REPO")  # e.g. "<user>/status-quo-raw"
 HF_TOKEN = os.environ.get("HF_TOKEN")
+HEALTHCHECKS_EXPORT_PING_URL = os.environ.get("HEALTHCHECKS_EXPORT_PING_URL")
 MAX_UPLOAD_ATTEMPTS = 3
 
 
@@ -51,6 +53,16 @@ def _rows_to_table(rows: list) -> pa.Table:
 
 def export_batch(db_path: Path = DEFAULT_DB_PATH, dataset_repo: str | None = None) -> int:
     """Exports all currently un-exported 'ok' snapshots. Returns rows exported."""
+    try:
+        result = _export_batch(db_path, dataset_repo)
+    except Exception:
+        ping_healthchecks(HEALTHCHECKS_EXPORT_PING_URL, success=False)
+        raise
+    ping_healthchecks(HEALTHCHECKS_EXPORT_PING_URL, success=True)
+    return result
+
+
+def _export_batch(db_path: Path, dataset_repo: str | None) -> int:
     dataset_repo = dataset_repo or HF_DATASET_REPO
     if not dataset_repo:
         raise RuntimeError("STATUS_QUO_HF_DATASET_REPO is not set — refusing to export")
@@ -58,7 +70,7 @@ def export_batch(db_path: Path = DEFAULT_DB_PATH, dataset_repo: str | None = Non
     with closing(db.connect(db_path)) as conn:
         rows = db.unexported_snapshots(conn)
         if not rows:
-            logger.info("export_batch: nothing to export")
+            log_line(event="export_batch", rows_exported=0, note="nothing_to_export")
             return 0
 
         by_partition: dict[tuple[str, str], list] = defaultdict(list)
@@ -83,7 +95,7 @@ def export_batch(db_path: Path = DEFAULT_DB_PATH, dataset_repo: str | None = Non
         db.mark_exported(conn, exported_ids, exported_at)
         conn.commit()
 
-    logger.info("export_batch: exported %d rows across %d partitions", len(exported_ids), len(by_partition))
+    log_line(event="export_batch", rows_exported=len(exported_ids), partitions=len(by_partition))
     return len(exported_ids)
 
 
