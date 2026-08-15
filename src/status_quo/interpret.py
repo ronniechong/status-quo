@@ -111,6 +111,12 @@ def compute_metrics(incident: dict) -> dict:
         "updates_per_hour": updates_per_hour,
         "component_count": component_count,
         "is_retroactive": is_retroactive,
+        # Provider-reported, verbatim — never the model's word, never compared
+        # across providers (dashboard non-negotiable: severity is not a shared scale).
+        "severity": incident.get("impact"),
+        # Statuspage's own per-incident permalink, captured at collection time —
+        # URL patterns differ once non-Statuspage providers arrive (roadmap M8).
+        "source_url": incident.get("shortlink"),
     }
 
 

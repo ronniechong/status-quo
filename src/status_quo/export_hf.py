@@ -56,6 +56,7 @@ def _interpretation_rows_to_table(rows: list) -> pa.Table:
         "id", "incident_id", "provider_id", "incident_updated_at_utc", "title", "summary",
         "affected_surface", "fault_origin", "workaround_offered", "workaround",
         "time_to_first_update_min", "updates_per_hour", "component_count", "is_retroactive",
+        "severity", "source_url",
         "model_used", "prompt_version", "schema_version", "interpreted_at_utc",
     ]
     return pa.table({col: [r[col] for r in rows] for col in columns})
@@ -186,8 +187,16 @@ def _merge_with_existing(api: HfApi, dataset_repo: str, local_path: Path, remote
 
     existing_table = pq.read_table(existing_path)
     new_table = pq.read_table(local_path)
-    merged = pa.concat_tables([existing_table, new_table])
-    pq.write_table(merged, local_path)
+    merged = pa.concat_tables([existing_table, new_table], promote_options="default")
+    # New rows win on a duplicate `id` — covers both normal incremental
+    # appends (no overlap, order irrelevant) and a corrective re-export of
+    # already-uploaded rows (e.g. a backfilled column), where the local
+    # table's version must replace the previously-uploaded one, not duplicate it.
+    by_id: dict = {}
+    for row in merged.to_pylist():
+        by_id[row["id"]] = row
+    deduped = pa.Table.from_pylist(list(by_id.values()), schema=merged.schema)
+    pq.write_table(deduped, local_path)
 
 
 if __name__ == "__main__":

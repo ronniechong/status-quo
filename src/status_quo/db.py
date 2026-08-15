@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS interpretations (
     updates_per_hour REAL,
     component_count INTEGER,
     is_retroactive INTEGER,                 -- 0/1
+    severity TEXT,                          -- provider's own reported severity, verbatim, not model output
+    source_url TEXT,                        -- deep link to the provider's own incident page, not a status homepage
     model_used TEXT NOT NULL,               -- which model actually produced this record
     prompt_version TEXT NOT NULL,
     schema_version TEXT NOT NULL,
@@ -77,7 +79,19 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
 def init_db(db_path: str | Path) -> None:
     with closing(connect(db_path)) as conn:
         conn.executescript(SCHEMA)
+        _migrate_add_severity_source_url(conn)
         conn.commit()
+
+
+def _migrate_add_severity_source_url(conn: sqlite3.Connection) -> None:
+    """Adds severity/source_url to a database created before these columns
+    existed. Safe to run repeatedly — no-ops once the columns are present.
+    """
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(interpretations)")}
+    if "severity" not in existing:
+        conn.execute("ALTER TABLE interpretations ADD COLUMN severity TEXT")
+    if "source_url" not in existing:
+        conn.execute("ALTER TABLE interpretations ADD COLUMN source_url TEXT")
 
 
 def insert_snapshot(
@@ -207,8 +221,9 @@ def insert_interpretation(conn: sqlite3.Connection, record: dict) -> None:
             incident_id, provider_id, incident_updated_at_utc, title, summary,
             affected_surface, fault_origin, workaround_offered, workaround,
             time_to_first_update_min, updates_per_hour, component_count, is_retroactive,
+            severity, source_url,
             model_used, prompt_version, schema_version, interpreted_at_utc
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             record["incident_id"],
@@ -224,6 +239,8 @@ def insert_interpretation(conn: sqlite3.Connection, record: dict) -> None:
             record.get("updates_per_hour"),
             record.get("component_count"),
             int(bool(record.get("is_retroactive"))),
+            record.get("severity"),
+            record.get("source_url"),
             record["model_used"],
             record["prompt_version"],
             record["schema_version"],
