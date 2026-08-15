@@ -9,6 +9,7 @@ individual snapshots are never written as their own tiny Parquet file.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections import defaultdict
@@ -24,6 +25,7 @@ from huggingface_hub import HfApi
 from status_quo import db
 from status_quo.cycle import DEFAULT_DB_PATH
 from status_quo.observability import log_line, ping_healthchecks
+from status_quo.providers import PROVIDERS
 
 logger = logging.getLogger("status_quo.export_hf")
 
@@ -67,17 +69,57 @@ def _interpretation_month_partition(row) -> str:
 
 
 def export_batch(db_path: Path = DEFAULT_DB_PATH, dataset_repo: str | None = None) -> int:
-    """Exports all currently un-exported 'ok' snapshots and interpretations.
-    Returns total rows exported across both.
+    """Exports all currently un-exported 'ok' snapshots and interpretations,
+    plus a fresh coverage summary. Returns total rows exported across the
+    row-based exports (coverage is a single overwritten file, not counted
+    in rows).
     """
     try:
         snapshots_exported = _export_batch(db_path, dataset_repo)
         interpretations_exported = _export_interpretations_batch(db_path, dataset_repo)
+        _export_coverage(db_path, dataset_repo)
     except Exception:
         ping_healthchecks(HEALTHCHECKS_EXPORT_PING_URL, success=False)
         raise
     ping_healthchecks(HEALTHCHECKS_EXPORT_PING_URL, success=True)
     return snapshots_exported + interpretations_exported
+
+
+def _export_coverage(db_path: Path, dataset_repo: str | None) -> None:
+    """Writes a single, fully-overwritten `coverage/latest.json` — per-provider
+    collection start, last success, and gap windows (spec §9/§13's coverage
+    strip and history-depth chip). Unlike the row-based exports above, this
+    is a snapshot of current state, not an append log: no merge/dedup logic
+    needed, and it lives at its own path, entirely separate from the
+    `data/` and `interpretations/` Parquet partitions — a change here cannot
+    affect those exports.
+    """
+    dataset_repo = dataset_repo or HF_DATASET_REPO
+    if not dataset_repo:
+        raise RuntimeError("STATUS_QUO_HF_DATASET_REPO is not set — refusing to export")
+
+    with closing(db.connect(db_path)) as conn:
+        coverage = db.coverage_summary(conn, PROVIDERS)
+
+    api = HfApi(token=HF_TOKEN)
+    with TemporaryDirectory() as tmp:
+        local_path = Path(tmp) / "latest.json"
+        local_path.write_text(json.dumps(coverage, indent=2))
+        last_error: Exception | None = None
+        for attempt in range(1, MAX_UPLOAD_ATTEMPTS + 1):
+            try:
+                api.upload_file(
+                    path_or_fileobj=str(local_path),
+                    path_in_repo="coverage/latest.json",
+                    repo_id=dataset_repo,
+                    repo_type="dataset",
+                )
+                log_line(event="export_coverage", providers=len(coverage))
+                return
+            except Exception as exc:
+                last_error = exc
+                logger.warning("coverage export attempt %d/%d failed: %s", attempt, MAX_UPLOAD_ATTEMPTS, exc)
+    raise RuntimeError("Failed to upload coverage/latest.json after retries") from last_error
 
 
 def _export_interpretations_batch(db_path: Path, dataset_repo: str | None) -> int:

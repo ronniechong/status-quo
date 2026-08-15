@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import closing
+from datetime import datetime
 from pathlib import Path
 
 SCHEMA = """
@@ -260,6 +261,55 @@ def mark_interpretations_exported(conn: sqlite3.Connection, ids: list[int], expo
         "UPDATE interpretations SET exported_at_utc = ? WHERE id = ?",
         [(exported_at_utc, i) for i in ids],
     )
+
+
+def coverage_summary(conn: sqlite3.Connection, providers: list) -> list[dict]:
+    """Per-provider collection metadata for the dashboard's coverage strip
+    and history-depth chip (spec §9/§13) — collection start date, last
+    success, and gap windows where two consecutive successful fetches are
+    more than 2x the provider's expected poll cadence apart.
+
+    `providers` is the `PROVIDERS` list from `providers.py` — passed in
+    rather than imported, so this stays a pure data-access function.
+    """
+    conn.row_factory = sqlite3.Row
+    result = []
+    for provider in providers:
+        rows = conn.execute(
+            "SELECT fetched_at_utc, outcome FROM fetch_log WHERE provider_id = ? ORDER BY fetched_at_utc",
+            (provider.id,),
+        ).fetchall()
+
+        if not rows:
+            result.append({
+                "provider_id": provider.id,
+                "collection_start_utc": None,
+                "last_success_utc": None,
+                "last_attempt_utc": None,
+                "total_fetches": 0,
+                "ok_fetches": 0,
+                "gaps": [],
+            })
+            continue
+
+        ok_times = [r["fetched_at_utc"] for r in rows if r["outcome"] == "ok"]
+        gap_threshold_hours = provider.poll_cadence_hours * 2
+        gaps = []
+        for prev, curr in zip(ok_times, ok_times[1:]):
+            delta_hours = (datetime.fromisoformat(curr) - datetime.fromisoformat(prev)).total_seconds() / 3600
+            if delta_hours > gap_threshold_hours:
+                gaps.append({"start": prev, "end": curr})
+
+        result.append({
+            "provider_id": provider.id,
+            "collection_start_utc": rows[0]["fetched_at_utc"],
+            "last_success_utc": ok_times[-1] if ok_times else None,
+            "last_attempt_utc": rows[-1]["fetched_at_utc"],
+            "total_fetches": len(rows),
+            "ok_fetches": len(ok_times),
+            "gaps": gaps,
+        })
+    return result
 
 
 def recent_failures(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
