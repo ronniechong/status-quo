@@ -106,6 +106,10 @@ def compute_metrics(incident: dict) -> dict:
         time_to_first_update_min = None
         updates_per_hour = None
 
+    duration_hours = None
+    if created and resolved:
+        duration_hours = round((resolved - created).total_seconds() / 3600, 2)
+
     return {
         "time_to_first_update_min": time_to_first_update_min,
         "updates_per_hour": updates_per_hour,
@@ -117,6 +121,10 @@ def compute_metrics(incident: dict) -> dict:
         # Statuspage's own per-incident permalink, captured at collection time —
         # URL patterns differ once non-Statuspage providers arrive (roadmap M8).
         "source_url": incident.get("shortlink"),
+        "created_at": incident.get("created_at"),
+        "resolved_at": incident.get("resolved_at"),
+        "duration_hours": duration_hours,
+        "incident_status": incident.get("status", "resolved"),
     }
 
 

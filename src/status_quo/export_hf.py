@@ -58,7 +58,7 @@ def _interpretation_rows_to_table(rows: list) -> pa.Table:
         "id", "incident_id", "provider_id", "incident_updated_at_utc", "title", "summary",
         "affected_surface", "fault_origin", "workaround_offered", "workaround",
         "time_to_first_update_min", "updates_per_hour", "component_count", "is_retroactive",
-        "severity", "source_url",
+        "severity", "source_url", "created_at", "resolved_at", "duration_hours", "incident_status",
         "model_used", "prompt_version", "schema_version", "interpreted_at_utc",
     ]
     return pa.table({col: [r[col] for r in rows] for col in columns})

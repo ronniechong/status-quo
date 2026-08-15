@@ -58,7 +58,11 @@ CREATE TABLE IF NOT EXISTS interpretations (
     is_retroactive INTEGER,                 -- 0/1
     severity TEXT,                          -- provider's own reported severity, verbatim, not model output
     source_url TEXT,                        -- deep link to the provider's own incident page, not a status homepage
-    model_used TEXT NOT NULL,               -- which model actually produced this record
+    created_at TEXT,                        -- raw incident created_at, verbatim
+    resolved_at TEXT,                       -- raw incident resolved_at, verbatim; NULL while open
+    duration_hours REAL,                    -- (resolved_at - created_at); NULL while open
+    incident_status TEXT NOT NULL DEFAULT 'resolved', -- raw provider status verbatim: 'resolved', 'investigating', 'identified', 'monitoring', etc.
+    model_used TEXT NOT NULL,               -- which model actually produced this record; 'none' for open-incident raw snapshots (no LLM call)
     prompt_version TEXT NOT NULL,
     schema_version TEXT NOT NULL,
     interpreted_at_utc TEXT NOT NULL,
@@ -85,14 +89,22 @@ def init_db(db_path: str | Path) -> None:
 
 
 def _migrate_add_severity_source_url(conn: sqlite3.Connection) -> None:
-    """Adds severity/source_url to a database created before these columns
-    existed. Safe to run repeatedly — no-ops once the columns are present.
+    """Adds columns to a database created before they existed. Safe to run
+    repeatedly — no-ops once a column is already present.
     """
     existing = {row[1] for row in conn.execute("PRAGMA table_info(interpretations)")}
     if "severity" not in existing:
         conn.execute("ALTER TABLE interpretations ADD COLUMN severity TEXT")
     if "source_url" not in existing:
         conn.execute("ALTER TABLE interpretations ADD COLUMN source_url TEXT")
+    if "created_at" not in existing:
+        conn.execute("ALTER TABLE interpretations ADD COLUMN created_at TEXT")
+    if "resolved_at" not in existing:
+        conn.execute("ALTER TABLE interpretations ADD COLUMN resolved_at TEXT")
+    if "duration_hours" not in existing:
+        conn.execute("ALTER TABLE interpretations ADD COLUMN duration_hours REAL")
+    if "incident_status" not in existing:
+        conn.execute("ALTER TABLE interpretations ADD COLUMN incident_status TEXT NOT NULL DEFAULT 'resolved'")
 
 
 def insert_snapshot(
@@ -183,11 +195,11 @@ def health_summary(conn: sqlite3.Connection) -> list[dict]:
     return [dict(row) for row in cur.fetchall()]
 
 
-def latest_resolved_incidents(conn: sqlite3.Connection) -> list[dict]:
-    """Dedup 'ok' snapshots down to the latest known state of each resolved
-    incident (by provider_id, incident id), keyed on the incident's own
-    `updated_at`, not the fetch time. Only resolved incidents are returned —
-    interpretation summarises a finished incident, not an in-progress one.
+def _latest_incidents_by_status(conn: sqlite3.Connection, statuses: set[str] | None) -> list[dict]:
+    """Dedup 'ok' snapshots down to the latest known state of each incident
+    (by provider_id, incident id), keyed on the incident's own `updated_at`,
+    not the fetch time. `statuses=None` returns every status; otherwise only
+    incidents whose current status is in the given set.
     """
     conn.row_factory = sqlite3.Row
     cur = conn.execute(
@@ -197,13 +209,28 @@ def latest_resolved_incidents(conn: sqlite3.Connection) -> list[dict]:
     for row in cur.fetchall():
         body = json.loads(row["body"])
         for incident in body.get("incidents", []) or []:
-            if incident.get("status") != "resolved":
+            if statuses is not None and incident.get("status") not in statuses:
                 continue
             key = (row["provider_id"], incident.get("id"))
             existing = latest.get(key)
             if existing is None or (incident.get("updated_at") or "") >= (existing["incident"].get("updated_at") or ""):
                 latest[key] = {"provider_id": row["provider_id"], "incident": incident}
     return list(latest.values())
+
+
+def latest_resolved_incidents(conn: sqlite3.Connection) -> list[dict]:
+    """Only resolved incidents — interpretation (the LLM-tagging path)
+    summarises a finished incident, not an in-progress one.
+    """
+    return _latest_incidents_by_status(conn, {"resolved"})
+
+
+def latest_open_incidents(conn: sqlite3.Connection) -> list[dict]:
+    """Incidents not yet resolved — no LLM call, raw metadata only (see
+    `upsert_open_incident_snapshot`), since summarising an in-progress
+    incident risks stating an outcome that hasn't happened yet.
+    """
+    return _latest_incidents_by_status(conn, {"investigating", "identified", "monitoring"})
 
 
 def interpreted_incident_keys(conn: sqlite3.Connection, prompt_version: str) -> set[tuple[str, str]]:
@@ -222,9 +249,9 @@ def insert_interpretation(conn: sqlite3.Connection, record: dict) -> None:
             incident_id, provider_id, incident_updated_at_utc, title, summary,
             affected_surface, fault_origin, workaround_offered, workaround,
             time_to_first_update_min, updates_per_hour, component_count, is_retroactive,
-            severity, source_url,
+            severity, source_url, created_at, resolved_at, duration_hours, incident_status,
             model_used, prompt_version, schema_version, interpreted_at_utc
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             record["incident_id"],
@@ -242,11 +269,72 @@ def insert_interpretation(conn: sqlite3.Connection, record: dict) -> None:
             int(bool(record.get("is_retroactive"))),
             record.get("severity"),
             record.get("source_url"),
+            record.get("created_at"),
+            record.get("resolved_at"),
+            record.get("duration_hours"),
+            record.get("incident_status", "resolved"),
             record["model_used"],
             record["prompt_version"],
             record["schema_version"],
             record["interpreted_at_utc"],
         ),
+    )
+
+
+def upsert_open_incident_snapshot(conn: sqlite3.Connection, record: dict) -> None:
+    """Writes (or refreshes) a raw, non-LLM snapshot for a currently-open
+    incident. Unlike `insert_interpretation`'s INSERT OR IGNORE (a resolved
+    incident's interpretation is immutable once written), an open incident's
+    status can change between fetch cycles, so this upserts on the same
+    (incident_id, provider_id, prompt_version) key every cycle until the
+    incident resolves and transitions to the normal interpreted path.
+    """
+    conn.execute(
+        """
+        INSERT INTO interpretations (
+            incident_id, provider_id, incident_updated_at_utc, title,
+            component_count, severity, source_url, created_at, resolved_at,
+            duration_hours, incident_status, workaround_offered, is_retroactive,
+            model_used, prompt_version, schema_version, interpreted_at_utc
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?)
+        ON CONFLICT (incident_id, provider_id, prompt_version) DO UPDATE SET
+            incident_updated_at_utc = excluded.incident_updated_at_utc,
+            title = excluded.title,
+            component_count = excluded.component_count,
+            severity = excluded.severity,
+            source_url = excluded.source_url,
+            incident_status = excluded.incident_status,
+            interpreted_at_utc = excluded.interpreted_at_utc,
+            exported_at_utc = NULL
+        """,
+        (
+            record["incident_id"],
+            record["provider_id"],
+            record["incident_updated_at_utc"],
+            record.get("title"),
+            record.get("component_count"),
+            record.get("severity"),
+            record.get("source_url"),
+            record.get("created_at"),
+            record.get("resolved_at"),
+            record.get("duration_hours"),
+            record.get("incident_status", "investigating"),
+            record["model_used"],
+            record["prompt_version"],
+            record["schema_version"],
+            record["interpreted_at_utc"],
+        ),
+    )
+
+
+def delete_open_snapshot(conn: sqlite3.Connection, incident_id: str, provider_id: str, prompt_version: str) -> None:
+    """Removes a stale open-incident raw snapshot once the incident has
+    resolved and been interpreted for real — otherwise both rows would
+    exist and the dashboard build would need to guess which one wins.
+    """
+    conn.execute(
+        "DELETE FROM interpretations WHERE incident_id = ? AND provider_id = ? AND prompt_version = ?",
+        (incident_id, provider_id, prompt_version),
     )
 
 

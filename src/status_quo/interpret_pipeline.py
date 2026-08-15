@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import closing
+from datetime import datetime, timezone
 from pathlib import Path
 
 from status_quo import db
@@ -20,6 +21,9 @@ from status_quo.observability import log_line
 from status_quo.tracing import make_trace_fn
 
 logger = logging.getLogger("status_quo.interpret_pipeline")
+
+OPEN_SNAPSHOT_PROMPT_VERSION = "raw-v1"
+OPEN_SNAPSHOT_SCHEMA_VERSION = "v3"
 
 
 def run_interpretation_batch(db_path: Path = DEFAULT_DB_PATH, sample_rate: float = 1.0) -> int:
@@ -50,6 +54,10 @@ def run_interpretation_batch(db_path: Path = DEFAULT_DB_PATH, sample_rate: float
                 continue
 
             db.insert_interpretation(conn, record)
+            # Drop any stale open-incident raw snapshot now superseded by a
+            # real interpretation — otherwise both rows would exist and the
+            # dashboard build would have to guess which one wins.
+            db.delete_open_snapshot(conn, incident.get("id"), provider_id, OPEN_SNAPSHOT_PROMPT_VERSION)
             conn.commit()
             interpreted += 1
             log_line(
@@ -61,9 +69,40 @@ def run_interpretation_batch(db_path: Path = DEFAULT_DB_PATH, sample_rate: float
             )
             already_done.add(key)
 
+        open_count = _refresh_open_incidents(conn)
+
     flush_fn()
-    log_line(event="interpret_batch_complete", interpreted=interpreted)
+    log_line(event="interpret_batch_complete", interpreted=interpreted, open_refreshed=open_count)
     return interpreted
+
+
+def _refresh_open_incidents(conn) -> int:
+    """Upserts a raw (no-LLM) snapshot for every currently-open incident —
+    run every cycle, since an open incident's status/severity can change
+    between fetches until it resolves and moves to the real interpreted path.
+    """
+    from status_quo.interpret import compute_metrics
+
+    refreshed = 0
+    for entry in db.latest_open_incidents(conn):
+        provider_id = entry["provider_id"]
+        incident = entry["incident"]
+        metrics = compute_metrics(incident)
+        record = {
+            "incident_id": incident.get("id"),
+            "provider_id": provider_id,
+            "incident_updated_at_utc": incident.get("updated_at"),
+            "title": incident.get("name"),
+            "model_used": "none",
+            "prompt_version": OPEN_SNAPSHOT_PROMPT_VERSION,
+            "schema_version": OPEN_SNAPSHOT_SCHEMA_VERSION,
+            "interpreted_at_utc": datetime.now(timezone.utc).isoformat(),
+            **metrics,
+        }
+        db.upsert_open_incident_snapshot(conn, record)
+        refreshed += 1
+    conn.commit()
+    return refreshed
 
 
 if __name__ == "__main__":
