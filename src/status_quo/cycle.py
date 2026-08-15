@@ -76,6 +76,18 @@ def run_cycle(db_path: Path = DEFAULT_DB_PATH, status_path: Path = DEFAULT_STATU
     success = not any_failure
     log_line(event="fetch_cycle_complete", success=success)
     ping_healthchecks(HEALTHCHECKS_PING_URL, success)
+
+    try:
+        from status_quo.interpret_pipeline import run_interpretation_batch
+
+        run_interpretation_batch(db_path)
+    except Exception as exc:
+        # Interpretation failing must never fail the fetch cycle's own
+        # success/healthcheck signal -- collection is the thing that can't
+        # have gaps, interpretation can catch up on the next cycle.
+        logger.warning("interpretation batch failed: %s", exc)
+        log_line(event="interpret_batch_failed", error=str(exc))
+
     return success
 
 

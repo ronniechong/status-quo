@@ -17,6 +17,8 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("fetch", help="Run one fetch cycle across the provider cohort")
     sub.add_parser("export", help="Run one batched SQLite -> HuggingFace export")
+    sub.add_parser("interpret", help="Tag any resolved incidents not yet interpreted at the current prompt version")
+    sub.add_parser("reinterpret", help="Re-run the current prompt version over the full HuggingFace back-catalogue and diff against prior results")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -31,6 +33,19 @@ def main() -> int:
         from status_quo.export_hf import export_batch
 
         export_batch()
+        return 0
+
+    if args.command == "interpret":
+        from status_quo.interpret_pipeline import run_interpretation_batch
+
+        run_interpretation_batch()
+        return 0
+
+    if args.command == "reinterpret":
+        from status_quo.reinterpret import run_reinterpretation
+
+        summary = run_reinterpretation()
+        print(summary)
         return 0
 
     return 1

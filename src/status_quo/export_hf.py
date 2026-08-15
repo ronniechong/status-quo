@@ -51,15 +51,69 @@ def _rows_to_table(rows: list) -> pa.Table:
     )
 
 
+def _interpretation_rows_to_table(rows: list) -> pa.Table:
+    columns = [
+        "id", "incident_id", "provider_id", "incident_updated_at_utc", "title", "summary",
+        "affected_surface", "fault_origin", "workaround_offered", "workaround",
+        "time_to_first_update_min", "updates_per_hour", "component_count", "is_retroactive",
+        "model_used", "prompt_version", "schema_version", "interpreted_at_utc",
+    ]
+    return pa.table({col: [r[col] for r in rows] for col in columns})
+
+
+def _interpretation_month_partition(row) -> str:
+    return _month_partition(row["interpreted_at_utc"])
+
+
 def export_batch(db_path: Path = DEFAULT_DB_PATH, dataset_repo: str | None = None) -> int:
-    """Exports all currently un-exported 'ok' snapshots. Returns rows exported."""
+    """Exports all currently un-exported 'ok' snapshots and interpretations.
+    Returns total rows exported across both.
+    """
     try:
-        result = _export_batch(db_path, dataset_repo)
+        snapshots_exported = _export_batch(db_path, dataset_repo)
+        interpretations_exported = _export_interpretations_batch(db_path, dataset_repo)
     except Exception:
         ping_healthchecks(HEALTHCHECKS_EXPORT_PING_URL, success=False)
         raise
     ping_healthchecks(HEALTHCHECKS_EXPORT_PING_URL, success=True)
-    return result
+    return snapshots_exported + interpretations_exported
+
+
+def _export_interpretations_batch(db_path: Path, dataset_repo: str | None) -> int:
+    dataset_repo = dataset_repo or HF_DATASET_REPO
+    if not dataset_repo:
+        raise RuntimeError("STATUS_QUO_HF_DATASET_REPO is not set — refusing to export")
+
+    with closing(db.connect(db_path)) as conn:
+        rows = [dict(r) for r in db.unexported_interpretations(conn)]
+        if not rows:
+            log_line(event="export_interpretations_batch", rows_exported=0, note="nothing_to_export")
+            return 0
+
+        by_partition: dict[tuple[str, str], list] = defaultdict(list)
+        for row in rows:
+            partition_key = (row["provider_id"], _interpretation_month_partition(row))
+            by_partition[partition_key].append(row)
+
+        api = HfApi(token=HF_TOKEN)
+        exported_ids: list[int] = []
+
+        with TemporaryDirectory() as tmp:
+            for (provider_id, month), partition_rows in by_partition.items():
+                table = _interpretation_rows_to_table(partition_rows)
+                local_path = Path(tmp) / f"{provider_id}_{month}.parquet"
+                pq.write_table(table, local_path)
+
+                remote_path = f"interpretations/{provider_id}/{month}.parquet"
+                _upload_with_retry(api, dataset_repo, local_path, remote_path)
+                exported_ids.extend(r["id"] for r in partition_rows)
+
+        exported_at = datetime.now(timezone.utc).isoformat()
+        db.mark_interpretations_exported(conn, exported_ids, exported_at)
+        conn.commit()
+
+    log_line(event="export_interpretations_batch", rows_exported=len(exported_ids), partitions=len(by_partition))
+    return len(exported_ids)
 
 
 def _export_batch(db_path: Path, dataset_repo: str | None) -> int:

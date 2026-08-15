@@ -39,6 +39,32 @@ CREATE TABLE IF NOT EXISTS fetch_log (
     http_status INTEGER,
     note TEXT
 );
+
+CREATE TABLE IF NOT EXISTS interpretations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    incident_id TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    incident_updated_at_utc TEXT NOT NULL,  -- source incident's own updated_at, for dedup/staleness checks
+    title TEXT,
+    summary TEXT,
+    affected_surface TEXT,
+    fault_origin TEXT,
+    workaround_offered INTEGER,             -- 0/1
+    workaround TEXT,
+    time_to_first_update_min REAL,
+    updates_per_hour REAL,
+    component_count INTEGER,
+    is_retroactive INTEGER,                 -- 0/1
+    model_used TEXT NOT NULL,               -- which model actually produced this record
+    prompt_version TEXT NOT NULL,
+    schema_version TEXT NOT NULL,
+    interpreted_at_utc TEXT NOT NULL,
+    exported_at_utc TEXT,
+    UNIQUE (incident_id, provider_id, prompt_version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_interpretations_unexported
+    ON interpretations (exported_at_utc);
 """
 
 
@@ -140,6 +166,83 @@ def health_summary(conn: sqlite3.Connection) -> list[dict]:
         """
     )
     return [dict(row) for row in cur.fetchall()]
+
+
+def latest_resolved_incidents(conn: sqlite3.Connection) -> list[dict]:
+    """Dedup 'ok' snapshots down to the latest known state of each resolved
+    incident (by provider_id, incident id), keyed on the incident's own
+    `updated_at`, not the fetch time. Only resolved incidents are returned —
+    interpretation summarises a finished incident, not an in-progress one.
+    """
+    conn.row_factory = sqlite3.Row
+    cur = conn.execute(
+        "SELECT provider_id, body FROM snapshots WHERE outcome = 'ok' AND body IS NOT NULL ORDER BY fetched_at_utc"
+    )
+    latest: dict[tuple[str, str], dict] = {}
+    for row in cur.fetchall():
+        body = json.loads(row["body"])
+        for incident in body.get("incidents", []) or []:
+            if incident.get("status") != "resolved":
+                continue
+            key = (row["provider_id"], incident.get("id"))
+            existing = latest.get(key)
+            if existing is None or (incident.get("updated_at") or "") >= (existing["incident"].get("updated_at") or ""):
+                latest[key] = {"provider_id": row["provider_id"], "incident": incident}
+    return list(latest.values())
+
+
+def interpreted_incident_keys(conn: sqlite3.Connection, prompt_version: str) -> set[tuple[str, str]]:
+    """(provider_id, incident_id) pairs already interpreted at this prompt version."""
+    cur = conn.execute(
+        "SELECT provider_id, incident_id FROM interpretations WHERE prompt_version = ?",
+        (prompt_version,),
+    )
+    return {(row[0], row[1]) for row in cur.fetchall()}
+
+
+def insert_interpretation(conn: sqlite3.Connection, record: dict) -> None:
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO interpretations (
+            incident_id, provider_id, incident_updated_at_utc, title, summary,
+            affected_surface, fault_origin, workaround_offered, workaround,
+            time_to_first_update_min, updates_per_hour, component_count, is_retroactive,
+            model_used, prompt_version, schema_version, interpreted_at_utc
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            record["incident_id"],
+            record["provider_id"],
+            record["incident_updated_at_utc"],
+            record.get("title"),
+            record.get("summary"),
+            record.get("affected_surface"),
+            record.get("fault_origin"),
+            int(bool(record.get("workaround_offered"))),
+            record.get("workaround"),
+            record.get("time_to_first_update_min"),
+            record.get("updates_per_hour"),
+            record.get("component_count"),
+            int(bool(record.get("is_retroactive"))),
+            record["model_used"],
+            record["prompt_version"],
+            record["schema_version"],
+            record["interpreted_at_utc"],
+        ),
+    )
+
+
+def unexported_interpretations(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    conn.row_factory = sqlite3.Row
+    cur = conn.execute("SELECT * FROM interpretations WHERE exported_at_utc IS NULL ORDER BY interpreted_at_utc")
+    return cur.fetchall()
+
+
+def mark_interpretations_exported(conn: sqlite3.Connection, ids: list[int], exported_at_utc: str) -> None:
+    conn.executemany(
+        "UPDATE interpretations SET exported_at_utc = ? WHERE id = ?",
+        [(exported_at_utc, i) for i in ids],
+    )
 
 
 def recent_failures(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
