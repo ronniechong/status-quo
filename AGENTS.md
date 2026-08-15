@@ -11,18 +11,25 @@ operating cost, and durable off-host storage so the compute host stays
 disposable.
 
 ## Repository layout
-- `src/status_quo/` — collection, tagging, and pipeline code
-- `crontab` — supercronic schedule (runs inside the container)
-- `.github/workflows/` — CI (content added once there's code to run)
+- `service/` — the collection/interpretation pipeline (Python)
+  - `service/src/status_quo/` — collection, tagging, and pipeline code
+  - `service/crontab` — supercronic schedule (runs inside the container)
+  - `service/Dockerfile`
+- `app/` — the public dashboard (Astro + React islands, static site)
+- `docker-compose.yml`, `.env`/`.env.example` — orchestration, stay at repo root (compose auto-loads a same-directory `.env`)
+- `.github/workflows/` — CI (dashboard build/deploy)
 
 ## Commands
-- **Install:** `pip install .`
+- **Install pipeline:** `cd service && pip install .`
 - **Run one fetch cycle:** `status-quo fetch`
 - **Run one export batch:** `status-quo export`
+- **Build dashboard data:** `status-quo build-dashboard-data --out app/public/data`
+- **Dashboard dev server:** `cd app && npm run dev`
+- **Dashboard build:** `cd app && npm run build`
 - **Test:** TBD — added once tests exist
 - **Lint:** TBD
-- **Typecheck:** N/A (Python, no static typechecker configured yet)
-- **Build:** `docker build .`
+- **Typecheck:** N/A for the pipeline (Python, no static typechecker configured yet); Astro/TypeScript strict mode for `app/`
+- **Build pipeline image:** `docker build ./service` (or `docker compose build` from repo root)
 - **Run (long-lived, scheduled):** `docker compose up -d --build` (see README)
 
 ## Verified facts

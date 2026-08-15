@@ -184,6 +184,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", default="dashboard/public/data")
+    parser.add_argument("--out", default="app/public/data")
     args = parser.parse_args()
     build(args.out)

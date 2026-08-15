@@ -20,7 +20,7 @@ def main() -> int:
     sub.add_parser("interpret", help="Tag any resolved incidents not yet interpreted at the current prompt version")
     sub.add_parser("reinterpret", help="Re-run the current prompt version over the full HuggingFace back-catalogue and diff against prior results")
     build_dashboard = sub.add_parser("build-dashboard-data", help="Build the dashboard's static JSON data from the HuggingFace export")
-    build_dashboard.add_argument("--out", default="dashboard/public/data")
+    build_dashboard.add_argument("--out", default="app/public/data")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")

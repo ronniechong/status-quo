@@ -9,8 +9,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "dashboard/**"
-      - "src/status_quo/build_dashboard_data.py"
+      - "app/**"
+      - "service/src/status_quo/build_dashboard_data.py"
       - ".github/workflows/deploy-dashboard.yml"
 
 permissions:
@@ -33,31 +33,32 @@ jobs:
           python-version: "3.11"
 
       - name: Install status-quo package
+        working-directory: service
         run: pip install .
 
       - name: Build dashboard data from HuggingFace
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           STATUS_QUO_HF_DATASET_REPO: ${{ secrets.STATUS_QUO_HF_DATASET_REPO }}
-        run: status-quo build-dashboard-data --out dashboard/public/data
+        run: status-quo build-dashboard-data --out app/public/data
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: dashboard/package-lock.json
+          cache-dependency-path: app/package-lock.json
 
       - name: Install dashboard dependencies
-        working-directory: dashboard
+        working-directory: app
         run: npm ci
 
       - name: Build Astro site
-        working-directory: dashboard
+        working-directory: app
         run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dashboard/dist
+          path: app/dist
 
   deploy:
     needs: build

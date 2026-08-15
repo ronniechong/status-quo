@@ -1,6 +1,6 @@
 services:
   status-quo:
-    build: .
+    build: ./service
     restart: unless-stopped
     environment:
       - STATUS_QUO_HF_DATASET_REPO=${STATUS_QUO_HF_DATASET_REPO}
