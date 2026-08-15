@@ -1,0 +1,70 @@
+name: Deploy dashboard
+
+on:
+  schedule:
+    # Matches the collection pipeline's own daily export cadence — no
+    # point building more often than the source data actually changes.
+    - cron: "30 3 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - "src/status_quo/build_dashboard_data.py"
+      - ".github/workflows/deploy-dashboard.yml"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install status-quo package
+        run: pip install .
+
+      - name: Build dashboard data from HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          STATUS_QUO_HF_DATASET_REPO: ${{ secrets.STATUS_QUO_HF_DATASET_REPO }}
+        run: status-quo build-dashboard-data --out dashboard/public/data
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Build Astro site
+        working-directory: dashboard
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
