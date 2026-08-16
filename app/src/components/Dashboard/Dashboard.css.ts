@@ -110,7 +110,8 @@ export const cardMain = css({
 	width: "100%",
 });
 export const cardHeader = css({ display: "flex", gap: "2", alignItems: "center", justifyContent: "space-between", fontSize: "sm" });
-export const badgeRow = css({ display: "flex", gap: "1.5", alignItems: "center", flexWrap: "wrap", mt: "1" });
+export const badgeTagRow = css({ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "2", mt: "1" });
+export const badgeRow = css({ display: "flex", gap: "1.5", alignItems: "center", flexWrap: "wrap" });
 export const cardTitle = css({ fontSize: "md", fontWeight: "600", mt: "2", mb: "1" });
 export const cardSummary = css({ fontSize: "sm", color: "ink.700", lineHeight: "1.5", mb: "2" });
 export const cardTimestamp = css({ fontSize: "xs", color: "ink.700", opacity: "0.6", fontFamily: "monospace", ml: "auto" });

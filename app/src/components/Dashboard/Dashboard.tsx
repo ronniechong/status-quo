@@ -216,15 +216,17 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 									</div>
 									<h3 className={s.cardTitle}>{incident.title ?? "(untitled)"}</h3>
 									{incident.summary && <p className={s.cardSummary}>{incident.summary}</p>}
-									<div className={s.badgeRow}>
-										<StatusBadge incident={incident} dataAsOfLabel={dataAsOfLabel} />
-										{incident.severity && (
-											<span className={s.severityPill(severityColorScale(incident.severity))}>
-												{incident.provider_name}: {incident.severity}
-											</span>
-										)}
+									<div className={s.badgeTagRow}>
+										<div className={s.badgeRow}>
+											<StatusBadge incident={incident} dataAsOfLabel={dataAsOfLabel} />
+											{incident.severity && (
+												<span className={s.severityPill(severityColorScale(incident.severity))}>
+													{incident.provider_name}: {incident.severity}
+												</span>
+											)}
+										</div>
+										<TagRow incident={incident} />
 									</div>
-									<TagRow incident={incident} />
 								</button>
 								<div className={s.cardFooter}>
 									<a href={incident.source_url ?? "#"} className={s.dialogSourceLink} onClick={(e) => e.stopPropagation()}>
