@@ -218,6 +218,21 @@ def _latest_incidents_by_status(conn: sqlite3.Connection, statuses: set[str] | N
     return list(latest.values())
 
 
+def provider_first_seen_utc(conn: sqlite3.Connection, provider_id: str) -> str | None:
+    """Earliest successful fetch timestamp for this provider — the point
+    collection actually began. Used to skip interpreting a newly-added
+    provider's pre-existing incident backlog (its status page can return up
+    to ~50 already-resolved incidents on the very first fetch) — LLM spend
+    should only ever cover incidents observed rolling forward from when we
+    started watching a provider, not its history.
+    """
+    row = conn.execute(
+        "SELECT MIN(fetched_at_utc) FROM snapshots WHERE provider_id = ? AND outcome = 'ok'",
+        (provider_id,),
+    ).fetchone()
+    return row[0] if row else None
+
+
 def latest_resolved_incidents(conn: sqlite3.Connection) -> list[dict]:
     """Only resolved incidents — interpretation (the LLM-tagging path)
     summarises a finished incident, not an in-progress one.
