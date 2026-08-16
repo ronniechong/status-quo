@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Combobox, Dialog, createListCollection } from "@ark-ui/react";
 import TrendChart from "../TrendChart/TrendChart";
 import type { CoverageEntry, Incident } from "../../lib/types";
-import { medianDurationHours, formatDuration, dailyCounts, reportErrorUrl } from "../../lib/incidents";
+import { medianDurationHours, formatDuration, dailyCounts, reportErrorUrl, severityColorScale } from "../../lib/incidents";
 import { useHashRoute } from "../../lib/useHashRoute";
 import * as s from "./Dashboard.css";
 
@@ -25,11 +25,21 @@ const RANGE_GROUPS = [
 ];
 
 const FEED_PAGE_SIZE = 10;
+const WEEK_MS = 7 * 86_400_000;
+
+function formatCardTimestamp(incident: Incident): string {
+	const iso = incident.created_at ?? incident.incident_updated_at_utc;
+	if (!iso) return "";
+	const date = new Date(iso);
+	const label = `${date.toISOString().slice(0, 10)}`;
+	return incident.duration_hours !== null ? `${label} · ${formatDuration(incident.duration_hours)}` : label;
+}
 
 export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props) {
 	const [rangeHours, setRangeHours] = useState(24 * 7);
 	const [selectedProviders, setSelectedProviders] = useState<string[]>(coverage.map((c) => c.provider_id));
 	const [feedShown, setFeedShown] = useState(FEED_PAGE_SIZE);
+	const [providerSearch, setProviderSearch] = useState("");
 
 	const { hash, navigate, close } = useHashRoute();
 	const openIncident = useMemo(() => {
@@ -75,6 +85,11 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 
 	const feed = windowIncidents.slice(0, feedShown);
 
+	const filteredProviderItems = useMemo(
+		() => providerCollection.items.filter((item) => item.label.toLowerCase().includes(providerSearch.toLowerCase())),
+		[providerCollection, providerSearch],
+	);
+
 	function selectRange(hours: number) {
 		setRangeHours(hours);
 		setFeedShown(FEED_PAGE_SIZE);
@@ -82,19 +97,19 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 
 	return (
 		<div>
+			<div className={s.statsGrid}>
+				<Stat label="Incidents in window" value={String(windowIncidents.length)} />
+				<Stat label="Providers affected" value={`${providersAffected}/${coverage.length}`} />
+				<Stat label="Median duration" value={formatDuration(median)} />
+				<Stat label="Open at last check" value={String(openIncidents.length)} />
+			</div>
+
 			<div className={s.trendCard}>
 				<div className={s.trendHeader}>
 					<span>Incidents per day, last 30 days</span>
 					<span>Shaded = selected window</span>
 				</div>
 				<TrendChart data={trend} selectedWindowDays={selectedWindowDays} />
-			</div>
-
-			<div className={s.statsGrid}>
-				<Stat label="Incidents in window" value={String(windowIncidents.length)} />
-				<Stat label="Providers affected" value={`${providersAffected}/${coverage.length}`} />
-				<Stat label="Median duration" value={formatDuration(median)} />
-				<Stat label="Open at last check" value={String(openIncidents.length)} />
 			</div>
 
 			<div className={s.filterRow}>
@@ -124,30 +139,50 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 						setSelectedProviders(details.value);
 						setFeedShown(FEED_PAGE_SIZE);
 					}}
+					inputValue={providerSearch}
+					onInputValueChange={(details) => setProviderSearch(details.inputValue)}
 					className={s.comboboxRoot}
 				>
 					<Combobox.Label className={s.comboboxLabel}>Providers</Combobox.Label>
 					<Combobox.Control className={s.comboboxControl}>
-						<Combobox.Input placeholder={`${selectedProviders.length} providers`} className={s.comboboxInput} />
+						<span className={s.comboboxSummary}>
+							{selectedProviders.length === coverage.length ? "All providers" : `${selectedProviders.length} providers`}
+						</span>
 						<Combobox.Trigger className={s.comboboxTrigger}>▾</Combobox.Trigger>
 					</Combobox.Control>
 					<Combobox.Positioner>
 						<Combobox.Content className={s.comboboxContent}>
-							{providerCollection.items.map((item) => {
+							<Combobox.Input placeholder="Search providers" className={s.comboboxSearchInput} />
+							{filteredProviderItems.map((item) => {
 								const count = windowIncidents.filter((i) => i.provider_id === item.value).length;
 								const entry = coverage.find((c) => c.provider_id === item.value);
 								const hasGap = (entry?.gaps.length ?? 0) > 0;
+								const weeksCollected = entry?.collection_start_utc
+									? Math.round((Date.now() - Date.parse(entry.collection_start_utc)) / WEEK_MS)
+									: null;
+								const isShortHistory = weeksCollected !== null && weeksCollected < 8;
 								return (
-									<Combobox.Item key={item.value} item={item} className={s.comboboxItem}>
+									<Combobox.Item key={item.value} item={item} className={s.comboboxItem(count === 0)}>
+										<Combobox.ItemIndicator className={s.comboboxCheckbox}>✓</Combobox.ItemIndicator>
 										<Combobox.ItemText>{item.label}</Combobox.ItemText>
 										<span className={s.comboboxItemMeta}>
-											{count}
-											{hasGap && <span title="collection gap">⚠</span>}
-											<Combobox.ItemIndicator>✓</Combobox.ItemIndicator>
+											{isShortHistory && <span className={s.comboboxItemBadge}>{weeksCollected} wks</span>}
+											{hasGap && (
+												<span title="collection gap" aria-label="collection gap">
+													⚠
+												</span>
+											)}
+											{count === 0 ? "none" : `${count} incident${count === 1 ? "" : "s"}`}
 										</span>
 									</Combobox.Item>
 								);
 							})}
+							<div className={s.comboboxFooter}>
+								{providerSearch
+									? `${filteredProviderItems.length} of ${providerCollection.items.length} match '${providerSearch}' · `
+									: ""}
+								counts are for the selected window
+							</div>
 						</Combobox.Content>
 					</Combobox.Positioner>
 				</Combobox.Root>
@@ -168,36 +203,45 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 					</button>
 				</div>
 			) : (
-			<div className={s.feedList}>
-				{feed.map((incident) => (
-					<div key={`${incident.provider_id}-${incident.incident_id}`} className={s.card}>
-						<button onClick={() => openIncidentModal(incident)} className={s.cardMain}>
-							<div className={s.cardHeader}>
-								<strong>{incident.provider_name}</strong>
-								<StatusBadge incident={incident} dataAsOfLabel={dataAsOfLabel} />
-								{incident.severity && (
-									<span className={s.chip("gray.100")}>
-										{incident.provider_name}: {incident.severity}
-									</span>
-								)}
-							</div>
-							<h3 className={s.cardTitle}>{incident.title ?? "(untitled)"}</h3>
-						</button>
-						<div className={s.cardFooter}>
-							<a href={incident.source_url ?? "#"} className={s.dialogSourceLink} onClick={(e) => e.stopPropagation()}>
-								{incident.source_is_fallback ? "Provider status page" : "Source"}
-							</a>
-							<a
-								href={reportErrorUrl(incident, permalinkFor(incident))}
-								className={s.dialogSourceLink}
-								onClick={(e) => e.stopPropagation()}
-							>
-								Report an error
-							</a>
-						</div>
-					</div>
-				))}
-			</div>
+				<ul className={s.feedList}>
+					{feed.map((incident) => {
+						const key = `${incident.provider_id}-${incident.incident_id}`;
+						const isActive = openIncident !== null && openIncident.provider_id === incident.provider_id && openIncident.incident_id === incident.incident_id;
+						return (
+							<li key={key} className={s.card(isActive)}>
+								<button onClick={() => openIncidentModal(incident)} className={s.cardMain}>
+									<div className={s.cardHeader}>
+										<strong className={s.providerName}>{incident.provider_name}</strong>
+										<span className={s.cardTimestamp}>{formatCardTimestamp(incident)}</span>
+									</div>
+									<h3 className={s.cardTitle}>{incident.title ?? "(untitled)"}</h3>
+									{incident.summary && <p className={s.cardSummary}>{incident.summary}</p>}
+									<div className={s.badgeRow}>
+										<StatusBadge incident={incident} dataAsOfLabel={dataAsOfLabel} />
+										{incident.severity && (
+											<span className={s.severityPill(severityColorScale(incident.severity))}>
+												{incident.provider_name}: {incident.severity}
+											</span>
+										)}
+									</div>
+									<TagRow incident={incident} />
+								</button>
+								<div className={s.cardFooter}>
+									<a href={incident.source_url ?? "#"} className={s.dialogSourceLink} onClick={(e) => e.stopPropagation()}>
+										↗ {incident.source_is_fallback ? "Provider status page" : "Source"}
+									</a>
+									<a
+										href={reportErrorUrl(incident, permalinkFor(incident))}
+										className={s.dialogSourceLink}
+										onClick={(e) => e.stopPropagation()}
+									>
+										⚑ Report an error
+									</a>
+								</div>
+							</li>
+						);
+					})}
+				</ul>
 			)}
 
 			{feedShown < windowIncidents.length && (
@@ -217,8 +261,9 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 					{coverage.map((c) => {
 						const count = windowIncidents.filter((i) => i.provider_id === c.provider_id).length;
 						const hasGap = c.gaps.length > 0;
+						const state = hasGap ? "gap" : count > 0 ? "reported" : "none";
 						return (
-							<span key={c.provider_id} className={s.coverageChip(hasGap)}>
+							<span key={c.provider_id} className={s.coverageChip(state)}>
 								{hasGap ? "⚠ " : "✓ "}
 								{c.provider_name} — {hasGap ? "collection gap" : count > 0 ? `${count} reported` : "none reported"}
 							</span>
@@ -234,43 +279,54 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 						{openIncident && (
 							<>
 								<div className={s.dialogHeader}>
-									<Dialog.Title className={s.dialogTitle}>{openIncident.title ?? "(untitled)"}</Dialog.Title>
+									<div className={s.dialogHeaderTop}>
+										<strong className={s.providerName}>{openIncident.provider_name}</strong>
+										<StatusBadge incident={openIncident} dataAsOfLabel={dataAsOfLabel} />
+									</div>
 									<Dialog.CloseTrigger aria-label="Close" className={s.dialogClose}>
 										✕
 									</Dialog.CloseTrigger>
 								</div>
-								<div className={s.dialogStatus}>
-									<StatusBadge incident={openIncident} dataAsOfLabel={dataAsOfLabel} />
-								</div>
+								<Dialog.Title className={s.dialogTitle}>{openIncident.title ?? "(untitled)"}</Dialog.Title>
 								{openIncident.summary && <p className={s.dialogSummary}>{openIncident.summary}</p>}
+
+								<div className={s.dialogStatsGrid}>
+									<DialogStat label="Severity (provider's own)" value={openIncident.severity ?? "—"} />
+									<DialogStat label="Duration" value={formatDuration(openIncident.duration_hours)} />
+									<DialogStat
+										label="Time to first update"
+										value={openIncident.time_to_first_update_min !== null ? `${openIncident.time_to_first_update_min} min` : "—"}
+									/>
+									<DialogStat
+										label="Updates · Components"
+										value={
+											openIncident.component_count !== null
+												? `${openIncident.updates_per_hour !== null ? Math.round(openIncident.updates_per_hour * (openIncident.duration_hours ?? 1)) : "—"} updates · ${openIncident.component_count} components`
+												: "—"
+										}
+									/>
+								</div>
+
+								<TagRow incident={openIncident} />
+
+								<div className={s.dialogProvenanceLabel}>Provenance</div>
 								<dl className={s.dialogMeta}>
-									{openIncident.duration_hours !== null && (
-										<>
-											<dt>Duration</dt>
-											<dd>{formatDuration(openIncident.duration_hours)}</dd>
-										</>
-									)}
-									{openIncident.component_count !== null && (
-										<>
-											<dt>Components affected</dt>
-											<dd>{openIncident.component_count}</dd>
-										</>
-									)}
 									<dt>Model</dt>
 									<dd>{openIncident.model_used}</dd>
-									<dt>Prompt / schema</dt>
-									<dd>
-										{openIncident.prompt_version} / {openIncident.schema_version}
-									</dd>
+									<dt>Prompt version</dt>
+									<dd>{openIncident.prompt_version}</dd>
+									<dt>Schema version</dt>
+									<dd>{openIncident.schema_version}</dd>
 									<dt>Interpreted at</dt>
 									<dd>{openIncident.interpreted_at_utc}</dd>
 								</dl>
+
 								<div className={s.dialogLinks}>
 									<a href={openIncident.source_url ?? "#"} className={s.dialogSourceLink}>
-										{openIncident.source_is_fallback ? "Provider status page ↗" : "Source ↗"}
+										↗ {openIncident.source_is_fallback ? "Provider status page" : "Source"}
 									</a>
 									<a href={reportErrorUrl(openIncident, permalinkFor(openIncident))} className={s.dialogSourceLink}>
-										Report an error ↗
+										⚑ Report an error
 									</a>
 								</div>
 							</>
@@ -282,11 +338,34 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 	);
 }
 
+function TagRow({ incident }: { incident: Incident }) {
+	// The pipeline already writes the workaround status into `tags` (e.g.
+	// "no workaround"/"workaround offered") — don't append it a second time.
+	return (
+		<div className={s.tagRow}>
+			{incident.tags.map((tag) => (
+				<span key={tag} className={s.tagChip(tag === "workaround offered")}>
+					{tag}
+				</span>
+			))}
+		</div>
+	);
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
 	return (
 		<div className={s.statBox}>
 			<div className={s.statLabel}>{label}</div>
 			<div className={s.statValue}>{value}</div>
+		</div>
+	);
+}
+
+function DialogStat({ label, value }: { label: string; value: string }) {
+	return (
+		<div className={s.dialogStatBox}>
+			<div className={s.dialogStatLabel}>{label}</div>
+			<div className={s.dialogStatValue}>{value}</div>
 		</div>
 	);
 }

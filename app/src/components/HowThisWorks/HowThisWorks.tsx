@@ -44,12 +44,14 @@ export default function HowThisWorks({ open, onOpenChange, defaultModel, default
 					</div>
 
 					<div className={s.section}>
-						<div className={s.heading}>What it never does</div>
-						<ul className={s.neverList}>
-							<li>Produce a number — every figure on this page comes from a query over collected data.</li>
-							<li>Rate severity — the severity shown is the provider's own, never a model judgement.</li>
-							<li>Infer a cause the provider didn't state.</li>
-						</ul>
+						<div className={s.neverBox}>
+							<div className={s.heading}>What it never does</div>
+							<ul className={s.neverList}>
+								<li>Produce a number — every figure on this page comes from a query over collected data.</li>
+								<li>Rate severity — the severity shown is the provider's own, never a model judgement.</li>
+								<li>Infer a cause the provider didn't state.</li>
+							</ul>
+						</div>
 					</div>
 
 					<div className={s.section}>

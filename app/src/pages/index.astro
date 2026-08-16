@@ -16,12 +16,25 @@ const dataAsOfLabel = `${dataAsOf.toISOString().slice(0, 10)} ${dataAsOf.toISOSt
 
 <Layout>
 	<div class={css({ bg: "cream.50", minH: "100vh" })}>
-		<div class={css({ maxW: "900px", mx: "auto", px: "4", py: "6", fontFamily: "system-ui, sans-serif", color: "ink.900" })}>
-			<header class={css({ display: "flex", flexWrap: "wrap", gap: "3", justifyContent: "space-between", alignItems: "flex-start", pb: "4" })}>
+		<header class={css({ bg: "white", borderBottom: "1px solid", borderColor: "cream.300" })}>
+			<div
+				class={css({
+					maxW: "900px",
+					mx: "auto",
+					px: "4",
+					py: "5",
+					display: "flex",
+					flexWrap: "wrap",
+					gap: "3",
+					justifyContent: "space-between",
+					alignItems: "flex-start",
+					fontFamily: "system-ui, sans-serif",
+				})}
+			>
 				<div class={css({ display: "flex", alignItems: "center", gap: "3" })}>
 					<span class={css({ color: "ink.900", flexShrink: "0" })} set:html={LogoMark} />
 					<div>
-						<h1 class={css({ fontSize: "2xl", fontWeight: "600", m: "0" })}>Status Quo</h1>
+						<h1 class={css({ fontSize: "2xl", fontWeight: "600", m: "0", color: "ink.900" })}>Status Quo</h1>
 						<p class={css({ color: "ink.700", fontSize: "sm", m: "0" })}>Incident patterns across the services you depend on</p>
 					</div>
 				</div>
@@ -29,8 +42,10 @@ const dataAsOfLabel = `${dataAsOf.toISOString().slice(0, 10)} ${dataAsOf.toISOSt
 					Data as of<br />
 					<strong>{dataAsOfLabel}</strong>
 				</div>
-			</header>
+			</div>
+		</header>
 
+		<div class={css({ maxW: "900px", mx: "auto", px: "4", py: "6", fontFamily: "system-ui, sans-serif", color: "ink.900" })}>
 			<div
 				class={css({
 					display: "flex",
@@ -40,7 +55,8 @@ const dataAsOfLabel = `${dataAsOf.toISOString().slice(0, 10)} ${dataAsOf.toISOSt
 					bg: "cream.100",
 					borderRadius: "md",
 					px: "3",
-					py: "2",
+					py: "3",
+					my: "4",
 					fontSize: "sm",
 					color: "ink.700",
 				})}

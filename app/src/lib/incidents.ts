@@ -69,3 +69,15 @@ export function dailyCounts(incidents: Incident[], days = 30): DailyCount[] {
 	}
 	return [...buckets.entries()].map(([date, count]) => ({ date, count }));
 }
+
+// Severity is the provider's own word, never a model judgement (spec §9) —
+// this only maps their vocabulary to a colour bucket for scannability, it
+// doesn't rank or compare severity across providers.
+export function severityColorScale(severity: string | null): string {
+	if (!severity) return "gray";
+	const s = severity.toLowerCase();
+	if (/(critical|major|outage)/.test(s)) return "red";
+	if (/(degraded|minor|partial)/.test(s)) return "orange";
+	if (/(none|resolved|operational)/.test(s)) return "gray";
+	return "amber";
+}
