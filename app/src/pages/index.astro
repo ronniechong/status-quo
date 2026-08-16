@@ -1,14 +1,17 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { loadMeta, loadIncidents, loadCoverage, withinWindow, medianDurationHours, formatDuration } from "../lib/data";
+import { loadMeta, loadIncidents, loadCoverage, withinWindow, medianDurationHours, formatDuration, dailyCounts } from "../lib/data";
 import { css } from "../../styled-system/css";
+import TrendChart from "../components/TrendChart";
 
 const meta = loadMeta();
 const allIncidents = loadIncidents();
 const coverage = loadCoverage();
 
 // Default window per spec §8: 7 days.
-const windowIncidents = withinWindow(allIncidents, 24 * 7);
+const WINDOW_DAYS = 7;
+const windowIncidents = withinWindow(allIncidents, 24 * WINDOW_DAYS);
+const trend = dailyCounts(allIncidents, 30);
 const providersAffected = new Set(windowIncidents.map((i) => i.provider_id)).size;
 const openIncidents = allIncidents.filter((i) => i.is_open);
 const median = medianDurationHours(windowIncidents.filter((i) => !i.is_open));
@@ -58,9 +61,13 @@ const feed = windowIncidents.slice(0, 20);
 			</div>
 		</section>
 
-		<p class={css({ fontSize: "sm", color: "gray.500", fontStyle: "italic" })}>
-			Trend chart (visx, 30-day daily bars) not yet built — next task.
-		</p>
+		<section class={css({ my: "4" })}>
+			<div class={css({ display: "flex", justifyContent: "space-between", fontSize: "xs", color: "gray.500", mb: "1" })}>
+				<span>Incidents per day, last 30 days</span>
+				<span>Shaded = selected window</span>
+			</div>
+			<TrendChart client:load data={trend} selectedWindowDays={WINDOW_DAYS} />
+		</section>
 
 		<section class={css({ display: "flex", flexDirection: "column", gap: "3", my: "4" })}>
 			{feed.map((incident) => (

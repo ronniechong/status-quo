@@ -87,6 +87,29 @@ export function medianDurationHours(incidents: Incident[]): number | null {
 	return durations.length % 2 === 0 ? (durations[mid - 1] + durations[mid]) / 2 : durations[mid];
 }
 
+export interface DailyCount {
+	date: string; // YYYY-MM-DD, UTC
+	count: number;
+}
+
+// Fixed 30-day window, independent of the selected filter range — spec §7:
+// answers "is this window unusual", which needs a stable baseline.
+export function dailyCounts(incidents: Incident[], days = 30): DailyCount[] {
+	const today = new Date();
+	const dayMs = 86_400_000;
+	const buckets = new Map<string, number>();
+	for (let i = days - 1; i >= 0; i--) {
+		const d = new Date(today.getTime() - i * dayMs);
+		buckets.set(d.toISOString().slice(0, 10), 0);
+	}
+	for (const incident of incidents) {
+		if (!incident.incident_updated_at_utc) continue;
+		const key = incident.incident_updated_at_utc.slice(0, 10);
+		if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
+	}
+	return [...buckets.entries()].map(([date, count]) => ({ date, count }));
+}
+
 export function formatDuration(hours: number | null): string {
 	if (hours === null) return "—";
 	if (hours < 1) return `${Math.round(hours * 60)}m`;
