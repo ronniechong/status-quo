@@ -1,13 +1,13 @@
 import { css } from "../../../styled-system/css";
 
 export const trendHeader = css({ display: "flex", justifyContent: "space-between", fontSize: "xs", color: "gray.500", mb: "1" });
-export const statsGrid = css({ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "3", my: "4" });
+export const statsGrid = css({ display: "grid", gridTemplateColumns: { base: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }, gap: "3", my: "4" });
 export const statBox = css({ border: "1px solid", borderColor: "gray.200", borderRadius: "md", p: "3" });
 export const statLabel = css({ fontSize: "xs", color: "gray.500" });
 export const statValue = css({ fontSize: "xl", fontWeight: "600" });
 
-export const filterRow = css({ display: "flex", gap: "4", alignItems: "center", flexWrap: "wrap", my: "4" });
-export const rangeGroup = css({ display: "flex", gap: "1" });
+export const filterRow = css({ display: "flex", flexDirection: { base: "column", sm: "row" }, gap: "4", alignItems: { base: "stretch", sm: "center" }, my: "4" });
+export const rangeGroup = css({ display: "flex", gap: "1", flexWrap: "wrap" });
 export const rangeButton = (active: boolean) =>
 	css({
 		fontSize: "xs",
@@ -21,7 +21,7 @@ export const rangeButton = (active: boolean) =>
 		cursor: "pointer",
 	});
 
-export const comboboxRoot = css({ minW: "260px" });
+export const comboboxRoot = css({ minW: { base: "100%", sm: "260px" }, w: { base: "100%", sm: "auto" } });
 export const comboboxLabel = css({ fontSize: "xs", color: "gray.500" });
 export const comboboxControl = css({ display: "flex", border: "1px solid", borderColor: "gray.300", borderRadius: "md", px: "2", py: "0.5" });
 export const comboboxInput = css({ border: "none", outline: "none", fontSize: "sm", flex: "1" });
@@ -50,7 +50,7 @@ export const cardMain = css({
 	font: "inherit",
 	width: "100%",
 });
-export const cardHeader = css({ display: "flex", gap: "2", alignItems: "center", fontSize: "sm" });
+export const cardHeader = css({ display: "flex", gap: "2", alignItems: "center", fontSize: "sm", flexWrap: "wrap" });
 export const cardTitle = css({ fontSize: "md", fontWeight: "600", my: "1" });
 export const cardFooter = css({ display: "flex", gap: "3", px: "3", pb: "2", fontSize: "xs" });
 
@@ -107,8 +107,24 @@ export const coverageChip = (hasGap: boolean) =>
 	});
 
 export const dialogBackdrop = css({ position: "fixed", inset: "0", bg: "blackAlpha.400" });
-export const dialogPositioner = css({ position: "fixed", inset: "0", display: "flex", alignItems: "center", justifyContent: "center", p: "4" });
-export const dialogContent = css({ bg: "white", borderRadius: "md", p: "5", maxW: "560px", w: "100%", maxH: "80vh", overflowY: "auto" });
+export const dialogPositioner = css({
+	position: "fixed",
+	inset: "0",
+	display: "flex",
+	alignItems: { base: "stretch", sm: "center" },
+	justifyContent: "center",
+	p: { base: "0", sm: "4" },
+});
+export const dialogContent = css({
+	bg: "white",
+	borderRadius: { base: "0", sm: "md" },
+	p: "5",
+	maxW: { base: "100%", sm: "560px" },
+	w: "100%",
+	maxH: { base: "100%", sm: "80vh" },
+	h: { base: "100%", sm: "auto" },
+	overflowY: "auto",
+});
 export const dialogHeader = css({ display: "flex", justifyContent: "space-between", alignItems: "flex-start" });
 export const dialogTitle = css({ fontSize: "lg", fontWeight: "600", m: "0" });
 export const dialogClose = css({ border: "none", bg: "none", fontSize: "lg", cursor: "pointer" });

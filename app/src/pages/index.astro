@@ -15,7 +15,7 @@ const dataAsOfLabel = `${dataAsOf.toISOString().slice(0, 10)} ${dataAsOf.toISOSt
 
 <Layout>
 	<div class={css({ maxW: "900px", mx: "auto", px: "4", py: "6", fontFamily: "system-ui, sans-serif", color: "gray.900" })}>
-		<header class={css({ display: "flex", justifyContent: "space-between", alignItems: "flex-start", pb: "4" })}>
+		<header class={css({ display: "flex", flexWrap: "wrap", gap: "2", justifyContent: "space-between", alignItems: "flex-start", pb: "4" })}>
 			<div>
 				<h1 class={css({ fontSize: "2xl", fontWeight: "600", m: "0" })}>Status Quo</h1>
 				<p class={css({ color: "gray.500", fontSize: "sm", m: "0" })}>Incident patterns across the services you depend on</p>

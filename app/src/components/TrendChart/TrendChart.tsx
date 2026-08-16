@@ -1,9 +1,10 @@
+import { useEffect, useState } from "react";
 import { Group } from "@visx/group";
 import { Bar } from "@visx/shape";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import type { DailyCount } from "../../lib/types";
-import { WIDTH, HEIGHT, MARGIN, colors } from "./TrendChart.css";
+import { WIDTH, MOBILE_DAYS, HEIGHT, MARGIN, colors } from "./TrendChart.css";
 
 interface Props {
 	data: DailyCount[];
@@ -13,7 +14,27 @@ interface Props {
 	selectedWindowDays: number;
 }
 
-export default function TrendChart({ data, selectedWindowDays }: Props) {
+function useIsNarrow() {
+	const [isNarrow, setIsNarrow] = useState(false);
+	useEffect(() => {
+		if (typeof window.matchMedia !== "function") return;
+		const mq = window.matchMedia("(max-width: 640px)");
+		setIsNarrow(mq.matches);
+		const onChange = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+		mq.addEventListener("change", onChange);
+		return () => mq.removeEventListener("change", onChange);
+	}, []);
+	return isNarrow;
+}
+
+export default function TrendChart({ data: fullData, selectedWindowDays: fullSelectedWindowDays }: Props) {
+	// Narrow viewports show fewer trailing days rather than compressing bars
+	// below legibility, per spec §16 — the shaded overlay still tracks the
+	// (clamped) selected window within whatever's visible.
+	const isNarrow = useIsNarrow();
+	const data = isNarrow ? fullData.slice(-MOBILE_DAYS) : fullData;
+	const selectedWindowDays = Math.min(fullSelectedWindowDays, data.length);
+
 	const innerWidth = WIDTH - MARGIN.left - MARGIN.right;
 	const innerHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
 
@@ -36,7 +57,12 @@ export default function TrendChart({ data, selectedWindowDays }: Props) {
 	const tickDates = new Set<string>([data[0]?.date, data[data.length - 1]?.date, data[shadedFrom]?.date].filter(Boolean) as string[]);
 
 	return (
-		<svg width={WIDTH} height={HEIGHT} role="img" aria-label={`Incidents per day, last ${data.length} days`}>
+		<svg
+			viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+			style={{ width: "100%", height: "auto", maxWidth: WIDTH }}
+			role="img"
+			aria-label={`Incidents per day, last ${data.length} days`}
+		>
 			<Group left={MARGIN.left} top={MARGIN.top}>
 				<rect
 					x={xScale(data[shadedFrom]?.date ?? "")}
