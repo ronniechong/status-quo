@@ -33,11 +33,14 @@ export const rangeButton = (active: boolean) =>
 
 export const comboboxRoot = css({ minW: { base: "100%", sm: "200px" }, w: { base: "100%", sm: "auto" } });
 export const comboboxLabel = css({ position: "absolute", w: "1px", h: "1px", overflow: "hidden", clip: "rect(0,0,0,0)" });
-export const comboboxControl = css({
+export const comboboxControl = css({ display: "flex" });
+export const comboboxSummary = css({ fontSize: "sm", fontWeight: "600", color: "ink.900" });
+export const comboboxTrigger = css({
 	display: "flex",
 	alignItems: "center",
 	justifyContent: "space-between",
 	gap: "2",
+	w: "100%",
 	bg: "white",
 	border: "1px solid",
 	borderColor: "cream.300",
@@ -45,10 +48,10 @@ export const comboboxControl = css({
 	px: "4",
 	py: "2",
 	cursor: "pointer",
+	color: "ink.700",
 });
-export const comboboxSummary = css({ fontSize: "sm", fontWeight: "600", color: "ink.900" });
-export const comboboxTrigger = css({ border: "none", bg: "none", cursor: "pointer", color: "ink.700" });
 export const comboboxContent = css({
+	zIndex: "20",
 	bg: "white",
 	border: "1px solid",
 	borderColor: "cream.300",
@@ -203,10 +206,11 @@ export const coverageChip = (state: "reported" | "none" | "gap") =>
 		bg: state === "gap" ? "red.50" : state === "none" ? "green.50" : "white",
 	});
 
-export const dialogBackdrop = css({ position: "fixed", inset: "0", bg: "rgba(33, 30, 23, 0.55)" });
+export const dialogBackdrop = css({ position: "fixed", inset: "0", zIndex: "40", bg: "rgba(33, 30, 23, 0.55)" });
 export const dialogPositioner = css({
 	position: "fixed",
 	inset: "0",
+	zIndex: "40",
 	display: "flex",
 	alignItems: { base: "stretch", sm: "center" },
 	justifyContent: "center",

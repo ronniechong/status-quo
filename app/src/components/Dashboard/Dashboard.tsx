@@ -157,10 +157,12 @@ function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 				>
 					<Combobox.Label className={s.comboboxLabel}>Providers</Combobox.Label>
 					<Combobox.Control className={s.comboboxControl}>
-						<span className={s.comboboxSummary}>
-							{selectedProviders.length === coverage.length ? "All providers" : `${intl.formatNumber(selectedProviders.length)} providers`}
-						</span>
-						<Combobox.Trigger className={s.comboboxTrigger}>▾</Combobox.Trigger>
+						<Combobox.Trigger className={s.comboboxTrigger}>
+							<span className={s.comboboxSummary}>
+								{selectedProviders.length === coverage.length ? "All providers" : `${intl.formatNumber(selectedProviders.length)} providers`}
+							</span>
+							<span aria-hidden="true">▾</span>
+						</Combobox.Trigger>
 					</Combobox.Control>
 					<Combobox.Positioner>
 						<Combobox.Content className={s.comboboxContent}>

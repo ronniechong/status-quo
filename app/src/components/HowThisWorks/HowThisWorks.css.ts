@@ -1,9 +1,10 @@
 import { css } from "../../../styled-system/css";
 
-export const backdrop = css({ position: "fixed", inset: "0", bg: "rgba(33, 30, 23, 0.55)" });
+export const backdrop = css({ position: "fixed", inset: "0", zIndex: "40", bg: "rgba(33, 30, 23, 0.55)" });
 export const positioner = css({
 	position: "fixed",
 	inset: "0",
+	zIndex: "40",
 	display: "flex",
 	alignItems: { base: "stretch", sm: "center" },
 	justifyContent: "center",
