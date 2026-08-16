@@ -43,6 +43,20 @@ PROVIDER_DISPLAY_NAMES = {
     "netlify": "Netlify",
     "digitalocean": "DigitalOcean",
     "npm": "npm",
+    "stripe": "Stripe",
+    "dropbox": "Dropbox",
+    "twilio": "Twilio",
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "datadog": "Datadog",
+    "circleci": "CircleCI",
+    "figma": "Figma",
+    "asana": "Asana",
+    "sentry": "Sentry",
+    "supabase": "Supabase",
+    "render": "Render",
+    "hashicorp": "HashiCorp",
+    "zoom": "Zoom",
 }
 
 # Derived from each provider's already-configured API base URL — the
