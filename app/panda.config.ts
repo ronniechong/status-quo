@@ -12,7 +12,23 @@ export default defineConfig({
 
   // Useful for theme customization
   theme: {
-    extend: {},
+    extend: {
+      tokens: {
+        colors: {
+          cream: {
+            50: { value: "#faf7f0" },
+            100: { value: "#f3ede0" },
+            200: { value: "#e9e0cb" },
+            300: { value: "#ddd2b7" },
+          },
+          ink: {
+            700: { value: "#5c5646" },
+            800: { value: "#3a3629" },
+            900: { value: "#211e17" },
+          },
+        },
+      },
+    },
   },
 
   // The output directory for your css system

@@ -12,12 +12,16 @@ interface Props {
 	dataAsOfLabel: string;
 }
 
-const RANGES = [
-	{ label: "24h", hours: 24 },
-	{ label: "48h", hours: 48 },
-	{ label: "7d", hours: 24 * 7 },
-	{ label: "30d", hours: 24 * 30 },
-	{ label: "90d", hours: 24 * 90 },
+const RANGE_GROUPS = [
+	{ label: "Recent", ranges: [{ label: "24h", hours: 24 }, { label: "48h", hours: 48 }] },
+	{
+		label: "History",
+		ranges: [
+			{ label: "7d", hours: 24 * 7 },
+			{ label: "30d", hours: 24 * 30 },
+			{ label: "90d", hours: 24 * 90 },
+		],
+	},
 ];
 
 const FEED_PAGE_SIZE = 10;
@@ -78,11 +82,13 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 
 	return (
 		<div>
-			<div className={s.trendHeader}>
-				<span>Incidents per day, last 30 days</span>
-				<span>Shaded = selected window</span>
+			<div className={s.trendCard}>
+				<div className={s.trendHeader}>
+					<span>Incidents per day, last 30 days</span>
+					<span>Shaded = selected window</span>
+				</div>
+				<TrendChart data={trend} selectedWindowDays={selectedWindowDays} />
 			</div>
-			<TrendChart data={trend} selectedWindowDays={selectedWindowDays} />
 
 			<div className={s.statsGrid}>
 				<Stat label="Incidents in window" value={String(windowIncidents.length)} />
@@ -92,11 +98,21 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 			</div>
 
 			<div className={s.filterRow}>
-				<div className={s.rangeGroup} role="group" aria-label="Time range">
-					{RANGES.map((r) => (
-						<button key={r.label} onClick={() => selectRange(r.hours)} className={s.rangeButton(rangeHours === r.hours)} aria-pressed={rangeHours === r.hours}>
-							{r.label}
-						</button>
+				<div className={s.rangeGroups}>
+					{RANGE_GROUPS.map((group) => (
+						<div key={group.label} className={s.rangeGroup} role="group" aria-label={`${group.label} time range`}>
+							<span className={s.rangeGroupLabel}>{group.label}</span>
+							{group.ranges.map((r) => (
+								<button
+									key={r.label}
+									onClick={() => selectRange(r.hours)}
+									className={s.rangeButton(rangeHours === r.hours)}
+									aria-pressed={rangeHours === r.hours}
+								>
+									{r.label}
+								</button>
+							))}
+						</div>
 					))}
 				</div>
 

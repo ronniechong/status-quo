@@ -1,13 +1,16 @@
 import { css } from "../../../styled-system/css";
 
-export const trendHeader = css({ display: "flex", justifyContent: "space-between", fontSize: "xs", color: "gray.500", mb: "1" });
+export const trendHeader = css({ display: "flex", justifyContent: "space-between", fontSize: "xs", color: "ink.700", mb: "1" });
+export const trendCard = css({ bg: "cream.100", borderRadius: "md", p: "3" });
 export const statsGrid = css({ display: "grid", gridTemplateColumns: { base: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }, gap: "3", my: "4" });
-export const statBox = css({ border: "1px solid", borderColor: "gray.200", borderRadius: "md", p: "3" });
-export const statLabel = css({ fontSize: "xs", color: "gray.500" });
-export const statValue = css({ fontSize: "xl", fontWeight: "600" });
+export const statBox = css({ bg: "cream.100", borderRadius: "md", p: "3" });
+export const statLabel = css({ fontSize: "xs", color: "ink.700" });
+export const statValue = css({ fontSize: "xl", fontWeight: "600", fontFamily: "monospace" });
 
 export const filterRow = css({ display: "flex", flexDirection: { base: "column", sm: "row" }, gap: "4", alignItems: { base: "stretch", sm: "center" }, my: "4" });
-export const rangeGroup = css({ display: "flex", gap: "1", flexWrap: "wrap" });
+export const rangeGroups = css({ display: "flex", flexWrap: "wrap", gap: "3", alignItems: "center" });
+export const rangeGroup = css({ display: "flex", gap: "1", alignItems: "center", flexWrap: "wrap" });
+export const rangeGroupLabel = css({ fontSize: "xs", color: "ink.700", mr: "1" });
 export const rangeButton = (active: boolean) =>
 	css({
 		fontSize: "xs",
@@ -15,31 +18,31 @@ export const rangeButton = (active: boolean) =>
 		py: "1",
 		borderRadius: "full",
 		border: "1px solid",
-		borderColor: "gray.300",
+		borderColor: active ? "blue.700" : "cream.300",
 		bg: active ? "blue.700" : "white",
-		color: active ? "white" : "gray.700",
+		color: active ? "white" : "ink.800",
 		cursor: "pointer",
 	});
 
 export const comboboxRoot = css({ minW: { base: "100%", sm: "260px" }, w: { base: "100%", sm: "auto" } });
-export const comboboxLabel = css({ fontSize: "xs", color: "gray.500" });
-export const comboboxControl = css({ display: "flex", border: "1px solid", borderColor: "gray.300", borderRadius: "md", px: "2", py: "0.5" });
+export const comboboxLabel = css({ fontSize: "xs", color: "ink.700" });
+export const comboboxControl = css({ display: "flex", bg: "white", border: "1px solid", borderColor: "cream.300", borderRadius: "md", px: "2", py: "0.5" });
 export const comboboxInput = css({ border: "none", outline: "none", fontSize: "sm", flex: "1" });
 export const comboboxTrigger = css({ border: "none", bg: "none", cursor: "pointer" });
 export const comboboxContent = css({
 	bg: "white",
 	border: "1px solid",
-	borderColor: "gray.300",
+	borderColor: "cream.300",
 	borderRadius: "md",
 	boxShadow: "md",
 	maxH: "260px",
 	overflowY: "auto",
 });
 export const comboboxItem = css({ display: "flex", justifyContent: "space-between", px: "3", py: "1.5", fontSize: "sm", cursor: "pointer" });
-export const comboboxItemMeta = css({ color: "gray.400", display: "flex", gap: "1.5", alignItems: "center" });
+export const comboboxItemMeta = css({ color: "ink.700", opacity: "0.6", display: "flex", gap: "1.5", alignItems: "center" });
 
 export const feedList = css({ display: "flex", flexDirection: "column", gap: "3" });
-export const card = css({ border: "1px solid", borderColor: "gray.200", borderRadius: "md", bg: "white" });
+export const card = css({ border: "1px solid", borderColor: "cream.200", borderRadius: "md", bg: "white" });
 export const cardMain = css({
 	textAlign: "left",
 	p: "3",
@@ -63,20 +66,20 @@ export const showMoreButton = css({
 	py: "1.5",
 	borderRadius: "md",
 	border: "1px solid",
-	borderColor: "gray.300",
+	borderColor: "cream.300",
 	bg: "white",
 	cursor: "pointer",
 });
-export const showMoreCaption = css({ fontSize: "xs", color: "gray.400", mt: "1" });
+export const showMoreCaption = css({ fontSize: "xs", color: "ink.700", opacity: "0.6", mt: "1" });
 
 export const emptyState = css({
 	textAlign: "center",
 	py: "6",
 	px: "3",
-	color: "gray.500",
+	color: "ink.700",
 	fontSize: "sm",
 	border: "1px dashed",
-	borderColor: "gray.300",
+	borderColor: "cream.300",
 	borderRadius: "md",
 });
 export const emptyStateAction = css({
@@ -91,8 +94,8 @@ export const emptyStateAction = css({
 	font: "inherit",
 });
 
-export const coverageSection = css({ mt: "6", p: "3", bg: "gray.50", borderRadius: "md" });
-export const coverageLabel = css({ fontSize: "xs", color: "gray.500", mb: "2" });
+export const coverageSection = css({ mt: "6", p: "3", bg: "cream.100", borderRadius: "md" });
+export const coverageLabel = css({ fontSize: "xs", color: "ink.700", mb: "2" });
 export const coverageChips = css({ display: "flex", gap: "2", flexWrap: "wrap" });
 export const coverageChip = (hasGap: boolean) =>
 	css({
@@ -101,8 +104,8 @@ export const coverageChip = (hasGap: boolean) =>
 		py: "1",
 		borderRadius: "full",
 		border: "1px solid",
-		borderColor: hasGap ? "red.300" : "gray.300",
-		color: hasGap ? "red.700" : "gray.700",
+		borderColor: hasGap ? "red.300" : "cream.300",
+		color: hasGap ? "red.700" : "ink.800",
 		bg: hasGap ? "red.50" : "white",
 	});
 
@@ -128,8 +131,8 @@ export const dialogContent = css({
 export const dialogHeader = css({ display: "flex", justifyContent: "space-between", alignItems: "flex-start" });
 export const dialogTitle = css({ fontSize: "lg", fontWeight: "600", m: "0" });
 export const dialogClose = css({ border: "none", bg: "none", fontSize: "lg", cursor: "pointer" });
-export const dialogStatus = css({ fontSize: "sm", color: "gray.500", my: "2" });
+export const dialogStatus = css({ fontSize: "sm", color: "ink.700", my: "2" });
 export const dialogSummary = css({ fontSize: "sm" });
-export const dialogMeta = css({ fontSize: "sm", color: "gray.700", display: "grid", gridTemplateColumns: "auto 1fr", gap: "1 3" });
+export const dialogMeta = css({ fontSize: "sm", color: "ink.800", display: "grid", gridTemplateColumns: "auto 1fr", gap: "1 3" });
 export const dialogLinks = css({ display: "flex", gap: "4", mt: "2" });
 export const dialogSourceLink = css({ fontSize: "sm", color: "blue.700" });

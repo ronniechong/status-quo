@@ -4,8 +4,9 @@ export const MOBILE_DAYS = 14;
 export const MARGIN = { top: 8, right: 8, bottom: 24, left: 32 };
 
 export const colors = {
-	shaded: "#dbeafe",
-	bar: "#93c5fd",
-	axis: "#9ca3af",
-	tickLabel: "#6b7280",
+	shaded: "#dbe6fb",
+	bar: "#ddd2b7",
+	barSelected: "#3457c9",
+	axis: "#a89f89",
+	tickLabel: "#5c5646",
 };

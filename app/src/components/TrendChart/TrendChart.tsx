@@ -71,11 +71,18 @@ export default function TrendChart({ data: fullData, selectedWindowDays: fullSel
 					fill={colors.shaded}
 					opacity={0.6}
 				/>
-				{data.map((d) => {
+				{data.map((d, i) => {
 					const barHeight = innerHeight - (yScale(d.count) ?? 0);
 					const barX = xScale(d.date) ?? 0;
 					return (
-						<Bar key={d.date} x={barX} y={innerHeight - barHeight} width={xScale.bandwidth()} height={barHeight} fill={colors.bar}>
+						<Bar
+							key={d.date}
+							x={barX}
+							y={innerHeight - barHeight}
+							width={xScale.bandwidth()}
+							height={barHeight}
+							fill={i >= shadedFrom ? colors.barSelected : colors.bar}
+						>
 							<title>
 								{d.date}: {d.count} incident{d.count === 1 ? "" : "s"}
 							</title>
