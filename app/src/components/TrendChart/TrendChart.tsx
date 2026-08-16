@@ -2,7 +2,8 @@ import { Group } from "@visx/group";
 import { Bar } from "@visx/shape";
 import { scaleBand, scaleLinear } from "@visx/scale";
 import { AxisBottom, AxisLeft } from "@visx/axis";
-import type { DailyCount } from "../lib/data";
+import type { DailyCount } from "../../lib/types";
+import { WIDTH, HEIGHT, MARGIN, colors } from "./TrendChart.css";
 
 interface Props {
 	data: DailyCount[];
@@ -11,10 +12,6 @@ interface Props {
 	// (fixed 30 days) is wider than what the aggregate strip describes.
 	selectedWindowDays: number;
 }
-
-const WIDTH = 820;
-const HEIGHT = 180;
-const MARGIN = { top: 8, right: 8, bottom: 24, left: 32 };
 
 export default function TrendChart({ data, selectedWindowDays }: Props) {
 	const innerWidth = WIDTH - MARGIN.left - MARGIN.right;
@@ -45,35 +42,34 @@ export default function TrendChart({ data, selectedWindowDays }: Props) {
 					x={xScale(data[shadedFrom]?.date ?? "")}
 					width={innerWidth - (xScale(data[shadedFrom]?.date ?? "") ?? 0)}
 					height={innerHeight}
-					fill="#dbeafe"
+					fill={colors.shaded}
 					opacity={0.6}
 				/>
 				{data.map((d) => {
 					const barHeight = innerHeight - (yScale(d.count) ?? 0);
 					const barX = xScale(d.date) ?? 0;
 					return (
-						<Bar
-							key={d.date}
-							x={barX}
-							y={innerHeight - barHeight}
-							width={xScale.bandwidth()}
-							height={barHeight}
-							fill="#93c5fd"
-						>
+						<Bar key={d.date} x={barX} y={innerHeight - barHeight} width={xScale.bandwidth()} height={barHeight} fill={colors.bar}>
 							<title>
 								{d.date}: {d.count} incident{d.count === 1 ? "" : "s"}
 							</title>
 						</Bar>
 					);
 				})}
-				<AxisLeft scale={yScale} numTicks={3} stroke="#9ca3af" tickStroke="#9ca3af" tickLabelProps={() => ({ fontSize: 10, fill: "#6b7280", dx: -4 })} />
+				<AxisLeft
+					scale={yScale}
+					numTicks={3}
+					stroke={colors.axis}
+					tickStroke={colors.axis}
+					tickLabelProps={() => ({ fontSize: 10, fill: colors.tickLabel, dx: -4 })}
+				/>
 				<AxisBottom
 					top={innerHeight}
 					scale={xScale}
-					stroke="#9ca3af"
-					tickStroke="#9ca3af"
+					stroke={colors.axis}
+					tickStroke={colors.axis}
 					tickValues={[...tickDates]}
-					tickLabelProps={() => ({ fontSize: 10, fill: "#6b7280" })}
+					tickLabelProps={() => ({ fontSize: 10, fill: colors.tickLabel })}
 				/>
 			</Group>
 		</svg>
