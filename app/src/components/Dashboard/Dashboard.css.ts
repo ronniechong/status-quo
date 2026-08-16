@@ -39,19 +39,20 @@ export const comboboxItem = css({ display: "flex", justifyContent: "space-betwee
 export const comboboxItemMeta = css({ color: "gray.400", display: "flex", gap: "1.5", alignItems: "center" });
 
 export const feedList = css({ display: "flex", flexDirection: "column", gap: "3" });
-export const card = css({
+export const card = css({ border: "1px solid", borderColor: "gray.200", borderRadius: "md", bg: "white" });
+export const cardMain = css({
 	textAlign: "left",
-	border: "1px solid",
-	borderColor: "gray.200",
-	borderRadius: "md",
 	p: "3",
-	bg: "white",
+	pb: "1",
+	bg: "none",
+	border: "none",
 	cursor: "pointer",
 	font: "inherit",
 	width: "100%",
 });
 export const cardHeader = css({ display: "flex", gap: "2", alignItems: "center", fontSize: "sm" });
 export const cardTitle = css({ fontSize: "md", fontWeight: "600", my: "1" });
+export const cardFooter = css({ display: "flex", gap: "3", px: "3", pb: "2", fontSize: "xs" });
 
 export const chip = (bg: string) => css({ fontSize: "xs", px: "2", py: "0.5", borderRadius: "full", bg });
 
@@ -92,4 +93,5 @@ export const dialogClose = css({ border: "none", bg: "none", fontSize: "lg", cur
 export const dialogStatus = css({ fontSize: "sm", color: "gray.500", my: "2" });
 export const dialogSummary = css({ fontSize: "sm" });
 export const dialogMeta = css({ fontSize: "sm", color: "gray.700", display: "grid", gridTemplateColumns: "auto 1fr", gap: "1 3" });
+export const dialogLinks = css({ display: "flex", gap: "4", mt: "2" });
 export const dialogSourceLink = css({ fontSize: "sm", color: "blue.700" });

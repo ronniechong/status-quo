@@ -32,6 +32,26 @@ export function formatDuration(hours: number | null): string {
 	return `${hours.toFixed(1)}h`;
 }
 
+const ISSUE_REPO = "ronniechong/status-quo";
+
+// Prefills GitHub's Issue Form (correction.yml) via query params — one per
+// form field id — so a correction ships with the model's actual output and
+// version stamps attached, not free prose that needs hand-transcribing
+// later (spec §11).
+export function reportErrorUrl(incident: Incident, permalink: string): string {
+	const params = new URLSearchParams({
+		template: "correction.yml",
+		incident_id: incident.incident_id,
+		provider: incident.provider_name,
+		dashboard_permalink: permalink,
+		model_output: [incident.title, incident.summary].filter(Boolean).join("\n\n"),
+		model_used: incident.model_used,
+		prompt_version: incident.prompt_version,
+		schema_version: incident.schema_version,
+	});
+	return `https://github.com/${ISSUE_REPO}/issues/new?${params.toString()}`;
+}
+
 // Fixed 30-day window, independent of the selected filter range — spec §7:
 // answers "is this window unusual", which needs a stable baseline.
 export function dailyCounts(incidents: Incident[], days = 30): DailyCount[] {

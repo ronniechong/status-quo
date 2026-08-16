@@ -1,0 +1,56 @@
+name: Report a correction
+description: Flag an incident's title, summary, or tags as incorrect, missing something stated, or claiming something not in the source.
+labels: ["correction"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form's fields are stored alongside the model's original output, never replacing it — see "How this works" for why.
+  - type: input
+    id: incident_id
+    attributes:
+      label: Incident ID
+      description: The incident_id shown in the dashboard permalink.
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Provider
+      description: Which of the 10 collected providers this incident is from.
+    validations:
+      required: true
+  - type: input
+    id: dashboard_permalink
+    attributes:
+      label: Dashboard permalink
+      description: The #/incident/<provider>/<id> link this correction is about.
+    validations:
+      required: true
+  - type: textarea
+    id: model_output
+    attributes:
+      label: Model's actual output
+      description: Paste the title and/or summary exactly as shown on the dashboard.
+    validations:
+      required: true
+  - type: input
+    id: model_used
+    attributes:
+      label: Model
+      description: The model_used value shown on the card (or in the detail modal's provenance block).
+  - type: input
+    id: prompt_version
+    attributes:
+      label: Prompt version
+  - type: input
+    id: schema_version
+    attributes:
+      label: Schema version
+  - type: textarea
+    id: what_is_wrong
+    attributes:
+      label: What's wrong
+      description: What the output claims vs. what the source actually says (or doesn't say).
+    validations:
+      required: true

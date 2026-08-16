@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Combobox, Dialog, createListCollection } from "@ark-ui/react";
 import TrendChart from "../TrendChart/TrendChart";
 import type { CoverageEntry, Incident } from "../../lib/types";
-import { medianDurationHours, formatDuration, dailyCounts } from "../../lib/incidents";
+import { medianDurationHours, formatDuration, dailyCounts, reportErrorUrl } from "../../lib/incidents";
 import { useHashRoute } from "../../lib/useHashRoute";
 import * as s from "./Dashboard.css";
 
@@ -35,8 +35,17 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 		return incidents.find((i) => i.provider_id === providerId && i.incident_id === decodeURIComponent(incidentId)) ?? null;
 	}, [hash, incidents]);
 
+	function incidentHash(incident: Incident) {
+		return `#/incident/${incident.provider_id}/${encodeURIComponent(incident.incident_id)}`;
+	}
+
 	function openIncidentModal(incident: Incident) {
-		navigate(`#/incident/${incident.provider_id}/${encodeURIComponent(incident.incident_id)}`);
+		navigate(incidentHash(incident));
+	}
+
+	function permalinkFor(incident: Incident) {
+		if (typeof window === "undefined") return incidentHash(incident);
+		return `${window.location.origin}${window.location.pathname}${incidentHash(incident)}`;
 	}
 
 	const providerCollection = useMemo(
@@ -130,18 +139,32 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 
 			<div className={s.feedList}>
 				{feed.map((incident) => (
-					<button key={`${incident.provider_id}-${incident.incident_id}`} onClick={() => openIncidentModal(incident)} className={s.card}>
-						<div className={s.cardHeader}>
-							<strong>{incident.provider_name}</strong>
-							<StatusBadge incident={incident} dataAsOfLabel={dataAsOfLabel} />
-							{incident.severity && (
-								<span className={s.chip("gray.100")}>
-									{incident.provider_name}: {incident.severity}
-								</span>
-							)}
+					<div key={`${incident.provider_id}-${incident.incident_id}`} className={s.card}>
+						<button onClick={() => openIncidentModal(incident)} className={s.cardMain}>
+							<div className={s.cardHeader}>
+								<strong>{incident.provider_name}</strong>
+								<StatusBadge incident={incident} dataAsOfLabel={dataAsOfLabel} />
+								{incident.severity && (
+									<span className={s.chip("gray.100")}>
+										{incident.provider_name}: {incident.severity}
+									</span>
+								)}
+							</div>
+							<h3 className={s.cardTitle}>{incident.title ?? "(untitled)"}</h3>
+						</button>
+						<div className={s.cardFooter}>
+							<a href={incident.source_url ?? "#"} className={s.dialogSourceLink} onClick={(e) => e.stopPropagation()}>
+								{incident.source_is_fallback ? "Provider status page" : "Source"}
+							</a>
+							<a
+								href={reportErrorUrl(incident, permalinkFor(incident))}
+								className={s.dialogSourceLink}
+								onClick={(e) => e.stopPropagation()}
+							>
+								Report an error
+							</a>
 						</div>
-						<h3 className={s.cardTitle}>{incident.title ?? "(untitled)"}</h3>
-					</button>
+					</div>
 				))}
 			</div>
 
@@ -210,9 +233,14 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 									<dt>Interpreted at</dt>
 									<dd>{openIncident.interpreted_at_utc}</dd>
 								</dl>
-								<a href={openIncident.source_url ?? "#"} className={s.dialogSourceLink}>
-									{openIncident.source_is_fallback ? "Provider status page ↗" : "Source ↗"}
-								</a>
+								<div className={s.dialogLinks}>
+									<a href={openIncident.source_url ?? "#"} className={s.dialogSourceLink}>
+										{openIncident.source_is_fallback ? "Provider status page ↗" : "Source ↗"}
+									</a>
+									<a href={reportErrorUrl(openIncident, permalinkFor(openIncident))} className={s.dialogSourceLink}>
+										Report an error ↗
+									</a>
+								</div>
 							</>
 						)}
 					</Dialog.Content>
