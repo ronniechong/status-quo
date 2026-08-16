@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="210" height="36" viewBox="0 0 210 36" fill="none" role="img" aria-label="Status Quo">
+  <title>Status Quo</title>
+  <rect x="1.5" y="1.5" width="33" height="33" rx="9" stroke="currentColor" stroke-width="2.6"/>
+  <path d="M6.4 21.2 H10.2 L12.1 17.4 L14 21.2 H17 L19.7 10.6 L22.4 21.2 H24.7 L26.2 15.1 L27.7 21.2 H29.2" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="48" y="25" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="23" font-weight="500" letter-spacing="-0.3" fill="currentColor">Status Quo</text>
+</svg>
