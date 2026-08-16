@@ -79,6 +79,14 @@ def format_metadata(incident: dict) -> str:
     return f"Reported duration (created_at to resolved_at): {duration_str}\nAffected components (provider metadata): {components_str}"
 
 
+# Some providers write created_at/resolved_at within seconds of each other
+# (or resolved_at before created_at) even for incidents whose own narrative
+# describes a much longer span — the fields are unreliable at that point,
+# not a genuine near-instant resolution. Below this, treat duration/rate
+# metrics derived from the gap as unknown rather than publish a wrong number.
+MIN_RELIABLE_DURATION_SECONDS = 60
+
+
 def compute_metrics(incident: dict) -> dict:
     """Pure-metadata metrics — no LLM, no invention risk."""
 
@@ -94,10 +102,12 @@ def compute_metrics(incident: dict) -> dict:
     if created and update_times:
         time_to_first_update_min = round((update_times[0] - created).total_seconds() / 60, 1)
 
+    span_seconds = (resolved - created).total_seconds() if created and resolved else None
+    reliable_span = span_seconds is not None and span_seconds >= MIN_RELIABLE_DURATION_SECONDS
+
     updates_per_hour = None
-    if created and resolved and updates:
-        span_hours = (resolved - created).total_seconds() / 3600
-        updates_per_hour = round(len(updates) / span_hours, 2) if span_hours > 0 else None
+    if reliable_span and updates:
+        updates_per_hour = round(len(updates) / (span_seconds / 3600), 2)
 
     component_count = len(incident.get("components") or [])
     is_retroactive = len(updates) <= 1 and created == resolved
@@ -106,9 +116,7 @@ def compute_metrics(incident: dict) -> dict:
         time_to_first_update_min = None
         updates_per_hour = None
 
-    duration_hours = None
-    if created and resolved:
-        duration_hours = round((resolved - created).total_seconds() / 3600, 2)
+    duration_hours = round(span_seconds / 3600, 2) if reliable_span else None
 
     return {
         "time_to_first_update_min": time_to_first_update_min,

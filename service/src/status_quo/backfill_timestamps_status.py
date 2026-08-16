@@ -17,7 +17,7 @@ import logging
 from contextlib import closing
 from datetime import datetime
 
-from status_quo import db
+from status_quo import db, interpret
 from status_quo.cycle import DEFAULT_DB_PATH
 
 logger = logging.getLogger("status_quo.backfill_timestamps_status")
@@ -45,7 +45,10 @@ def _duration_hours(created: str | None, resolved: str | None) -> float | None:
     try:
         c = datetime.fromisoformat(created.replace("Z", "+00:00"))
         r = datetime.fromisoformat(resolved.replace("Z", "+00:00"))
-        return round((r - c).total_seconds() / 3600, 2)
+        span_seconds = (r - c).total_seconds()
+        if span_seconds < interpret.MIN_RELIABLE_DURATION_SECONDS:
+            return None
+        return round(span_seconds / 3600, 2)
     except ValueError:
         return None
 
