@@ -2,9 +2,11 @@ name: Deploy dashboard
 
 on:
   schedule:
-    # Matches the collection pipeline's own daily export cadence — no
-    # point building more often than the source data actually changes.
-    - cron: "30 3 * * *"
+    # 20 minutes after each ~6-hourly export (00:40/06:40/12:40/18:40 UTC)
+    # so the dashboard's real freshness matches what "How this works"
+    # tells visitors, rather than lagging a day behind on export data
+    # that's already there.
+    - cron: "40 */6 * * *"
   workflow_dispatch: {}
   push:
     branches: [main]
