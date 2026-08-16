@@ -1,0 +1,52 @@
+name: Sync dashboard data
+
+# Pulls the latest interpretation data from HuggingFace and commits it to
+# dashboard-data/ (deliberately outside app/, so this never triggers the
+# deploy-dashboard workflow). The client fetches this committed JSON
+# directly from raw.githubusercontent.com at page load — no Pages deploy
+# needed for new data to reach visitors.
+
+on:
+  schedule:
+    # 20 minutes after each ~6-hourly export (00:40/06:40/12:40/18:40 UTC).
+    - cron: "40 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-data
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install status-quo package
+        working-directory: service
+        run: pip install .
+
+      - name: Build dashboard data from HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          STATUS_QUO_HF_DATASET_REPO: ${{ secrets.STATUS_QUO_HF_DATASET_REPO }}
+        run: status-quo build-dashboard-data --out dashboard-data
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard-data
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "chore(data): sync dashboard data from HuggingFace"
+            git push
+          fi

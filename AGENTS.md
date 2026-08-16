@@ -16,14 +16,15 @@ disposable.
   - `service/crontab` — supercronic schedule (runs inside the container)
   - `service/Dockerfile`
 - `app/` — the public dashboard (Astro + React islands, static site)
+- `dashboard-data/` — committed JSON snapshots (`meta.json`, `incidents.json`, `coverage.json`), synced from HuggingFace by `.github/workflows/sync-data.yml`. Deliberately outside `app/` so a data sync never triggers an app rebuild; the client fetches these files directly from `raw.githubusercontent.com`.
 - `docker-compose.yml`, `.env`/`.env.example` — orchestration, stay at repo root (compose auto-loads a same-directory `.env`)
-- `.github/workflows/` — CI (dashboard build/deploy)
+- `.github/workflows/` — CI: `sync-data.yml` (pulls HuggingFace → commits `dashboard-data/`) and `deploy-dashboard.yml` (builds/deploys the app on code changes), fully independent of each other
 
 ## Commands
 - **Install pipeline:** `cd service && pip install .`
 - **Run one fetch cycle:** `status-quo fetch`
 - **Run one export batch:** `status-quo export`
-- **Build dashboard data:** `status-quo build-dashboard-data --out app/public/data`
+- **Sync dashboard data:** `status-quo build-dashboard-data --out dashboard-data` — writes to the repo-root `dashboard-data/` directory (outside `app/`), which the dashboard fetches client-side from `raw.githubusercontent.com` at page load. Not baked into the Astro build.
 - **Dashboard dev server:** `cd app && npm run dev`
 - **Dashboard build:** `cd app && npm run build`
 - **Test:** TBD — added once tests exist

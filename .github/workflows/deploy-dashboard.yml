@@ -1,18 +1,11 @@
 name: Deploy dashboard
 
 on:
-  schedule:
-    # 20 minutes after each ~6-hourly export (00:40/06:40/12:40/18:40 UTC)
-    # so the dashboard's real freshness matches what "How this works"
-    # tells visitors, rather than lagging a day behind on export data
-    # that's already there.
-    - cron: "40 */6 * * *"
   workflow_dispatch: {}
   push:
     branches: [main]
     paths:
       - "app/**"
-      - "service/src/status_quo/build_dashboard_data.py"
       - ".github/workflows/deploy-dashboard.yml"
 
 permissions:
@@ -29,20 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install status-quo package
-        working-directory: service
-        run: pip install .
-
-      - name: Build dashboard data from HuggingFace
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          STATUS_QUO_HF_DATASET_REPO: ${{ secrets.STATUS_QUO_HF_DATASET_REPO }}
-        run: status-quo build-dashboard-data --out app/public/data
 
       - uses: actions/setup-node@v4
         with:
