@@ -33,6 +33,7 @@ export const rangeButton = (active: boolean) =>
 
 export const comboboxRoot = css({ minW: { base: "100%", sm: "200px" }, w: { base: "100%", sm: "auto" } });
 export const comboboxLabel = css({ position: "absolute", w: "1px", h: "1px", overflow: "hidden", clip: "rect(0,0,0,0)" });
+export const srOnly = css({ position: "absolute", w: "1px", h: "1px", overflow: "hidden", clip: "rect(0,0,0,0)" });
 export const comboboxControl = css({ display: "flex" });
 export const comboboxSummary = css({ fontSize: "sm", fontWeight: "600", color: "ink.900" });
 export const comboboxTrigger = css({
@@ -57,7 +58,7 @@ export const comboboxContent = css({
 	borderColor: "cream.300",
 	borderRadius: "md",
 	boxShadow: "lg",
-	minW: "280px",
+	minW: "360px",
 	maxH: "340px",
 	overflowY: "auto",
 	p: "2",
@@ -71,8 +72,8 @@ export const comboboxSearchInput = css({
 	px: "3",
 	py: "1.5",
 	fontSize: "sm",
-	outline: "none",
 	mb: "2",
+	_focusVisible: { outline: "2px solid", outlineColor: "blue.700", outlineOffset: "1px" },
 });
 export const comboboxItem = (dimmed: boolean) =>
 	css({
@@ -129,7 +130,16 @@ export const cardFooter = css({
 	borderColor: "cream.100",
 });
 
-export const chip = (bg: string) => css({ fontSize: "xs", px: "2", py: "0.5", borderRadius: "full", bg });
+// Panda statically extracts css() calls at build time and can't resolve a
+// runtime bg argument — same constraint as severityPill below, each status
+// needs its own literal call or the background silently never compiles in.
+const chipBase = { fontSize: "xs", px: "2", py: "0.5", borderRadius: "full" } as const;
+const chipVariants = {
+	amber: css({ ...chipBase, bg: "amber.100" }),
+	purple: css({ ...chipBase, bg: "purple.100" }),
+	green: css({ ...chipBase, bg: "green.100" }),
+};
+export const chip = (variant: keyof typeof chipVariants) => chipVariants[variant];
 
 export const providerName = css({ fontSize: "md", fontWeight: "600", color: "ink.900" });
 
@@ -144,6 +154,8 @@ const severityPillVariants: Record<string, string> = {
 	gray: css({ ...severityPillBase, bg: "gray.50", color: "gray.700", borderColor: "gray.200" }),
 };
 export const severityPill = (color: string) => severityPillVariants[color] ?? severityPillVariants.gray;
+
+export const provenanceBadge = css({ fontSize: "xs", px: "2", py: "0.5", borderRadius: "full", bg: "orange.100", color: "orange.800" });
 
 export const tagRow = css({ display: "flex", flexWrap: "wrap", gap: "1.5", mt: "1" });
 export const tagChip = (positive: boolean) =>

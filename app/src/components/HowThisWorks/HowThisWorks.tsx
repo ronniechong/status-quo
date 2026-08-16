@@ -1,23 +1,40 @@
-import { Dialog } from "@ark-ui/react";
+import { Dialog, Portal } from "@ark-ui/react";
+import { useEffect, useRef } from "react";
 import * as s from "./HowThisWorks.css";
 
 interface Props {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	triggerRef: React.RefObject<HTMLElement | null>;
 	defaultModel: string;
 	defaultPromptVersion: string;
 }
 
-export default function HowThisWorks({ open, onOpenChange, defaultModel, defaultPromptVersion }: Props) {
+export default function HowThisWorks({ open, onOpenChange, triggerRef, defaultModel, defaultPromptVersion }: Props) {
+	const closeRef = useRef<HTMLButtonElement>(null);
+	useEffect(() => {
+		if (!open) return;
+		const id = setTimeout(() => closeRef.current?.focus(), 50);
+		return () => {
+			clearTimeout(id);
+			triggerRef.current?.focus();
+		};
+	}, [open, triggerRef]);
 	return (
-		<Dialog.Root open={open} onOpenChange={(d) => onOpenChange(d.open)}>
+		<Dialog.Root
+			open={open}
+			onOpenChange={(d) => onOpenChange(d.open)}
+			initialFocusEl={() => closeRef.current}
+			finalFocusEl={() => triggerRef.current}
+		>
+			<Portal>
 			<Dialog.Backdrop className={s.backdrop} />
 			<Dialog.Positioner className={s.positioner}>
 				<Dialog.Content className={s.content}>
 					<div className={s.header}>
 						<Dialog.Title className={s.title}>How this works</Dialog.Title>
-						<Dialog.CloseTrigger aria-label="Close" className={s.close}>
-							✕
+						<Dialog.CloseTrigger ref={closeRef} aria-label="Close" className={s.close}>
+							<span aria-hidden="true">✕</span>
 						</Dialog.CloseTrigger>
 					</div>
 
@@ -92,6 +109,7 @@ export default function HowThisWorks({ open, onOpenChange, defaultModel, default
 					</div>
 				</Dialog.Content>
 			</Dialog.Positioner>
+			</Portal>
 		</Dialog.Root>
 	);
 }

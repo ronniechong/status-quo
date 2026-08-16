@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Combobox, Dialog, createListCollection } from "@ark-ui/react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Combobox, Dialog, Portal, createListCollection } from "@ark-ui/react";
 import { IntlProvider, useIntl, type IntlShape } from "react-intl";
 import TrendChart from "../TrendChart/TrendChart";
 import type { CoverageEntry, Incident } from "../../lib/types";
@@ -54,18 +54,29 @@ function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 	const [providerSearch, setProviderSearch] = useState("");
 
 	const { hash, navigate, close } = useHashRoute();
+	const dialogCloseRef = useRef<HTMLButtonElement>(null);
+	const dialogTriggerRef = useRef<HTMLElement | null>(null);
 	const openIncident = useMemo(() => {
 		const m = hash.match(/^#\/incident\/([^/]+)\/(.+)$/);
 		if (!m) return null;
 		const [, providerId, incidentId] = m;
 		return incidents.find((i) => i.provider_id === providerId && i.incident_id === decodeURIComponent(incidentId)) ?? null;
 	}, [hash, incidents]);
+	useEffect(() => {
+		if (!openIncident) return;
+		const id = setTimeout(() => dialogCloseRef.current?.focus(), 50);
+		return () => {
+			clearTimeout(id);
+			dialogTriggerRef.current?.focus();
+		};
+	}, [openIncident]);
 
 	function incidentHash(incident: Incident) {
 		return `#/incident/${incident.provider_id}/${encodeURIComponent(incident.incident_id)}`;
 	}
 
-	function openIncidentModal(incident: Incident) {
+	function openIncidentModal(incident: Incident, trigger: HTMLElement) {
+		dialogTriggerRef.current = trigger;
 		navigate(incidentHash(incident));
 	}
 
@@ -223,7 +234,7 @@ function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 						const isActive = openIncident !== null && openIncident.provider_id === incident.provider_id && openIncident.incident_id === incident.incident_id;
 						return (
 							<li key={key} className={s.card(isActive)}>
-								<button onClick={() => openIncidentModal(incident)} className={s.cardMain}>
+								<button onClick={(e) => openIncidentModal(incident, e.currentTarget)} className={s.cardMain}>
 									<div className={s.cardHeader}>
 										<strong className={s.providerName}>{incident.provider_name}</strong>
 										<span className={s.cardTimestamp}>{formatCardTimestamp(intl, incident)}</span>
@@ -234,8 +245,16 @@ function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 										<div className={s.badgeRow}>
 											<StatusBadge incident={incident} dataAsOfLabel={dataAsOfLabel} />
 											{incident.severity && (
-												<span className={s.severityPill(severityColorScale(incident.severity))}>
+												<span
+													className={s.severityPill(severityColorScale(incident.severity))}
+													aria-label={`Severity as reported by ${incident.provider_name}: ${incident.severity}`}
+												>
 													{incident.provider_name}: {incident.severity}
+												</span>
+											)}
+											{incident.is_provenance_exception && (
+												<span className={s.provenanceBadge}>
+													{incident.model_used === "none" ? "raw snapshot" : `${incident.model_used} fallback`}
 												</span>
 											)}
 										</div>
@@ -244,14 +263,14 @@ function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 								</button>
 								<div className={s.cardFooter}>
 									<a href={incident.source_url ?? "#"} className={s.dialogSourceLink} onClick={(e) => e.stopPropagation()}>
-										↗ {incident.source_is_fallback ? "Provider status page" : "Source"}
+										<span aria-hidden="true">↗</span> {incident.source_is_fallback ? "Provider status page" : "Source"}
 									</a>
 									<a
 										href={reportErrorUrl(incident, permalinkFor(incident))}
 										className={s.dialogSourceLink}
 										onClick={(e) => e.stopPropagation()}
 									>
-										⚑ Report an error
+										<span aria-hidden="true">⚑</span> Report an error
 									</a>
 								</div>
 							</li>
@@ -280,7 +299,7 @@ function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 						const state = hasGap ? "gap" : count > 0 ? "reported" : "none";
 						return (
 							<span key={c.provider_id} className={s.coverageChip(state)}>
-								{hasGap ? "⚠ " : "✓ "}
+								<span aria-hidden="true">{hasGap ? "⚠ " : "✓ "}</span>
 								{c.provider_name} — {hasGap ? "collection gap" : count > 0 ? `${intl.formatNumber(count)} reported` : "none reported"}
 							</span>
 						);
@@ -288,71 +307,78 @@ function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 				</div>
 			</section>
 
-			<Dialog.Root open={openIncident !== null} onOpenChange={(d) => !d.open && close()}>
-				<Dialog.Backdrop className={s.dialogBackdrop} />
-				<Dialog.Positioner className={s.dialogPositioner}>
-					<Dialog.Content className={s.dialogContent}>
-						{openIncident && (
-							<>
-								<div className={s.dialogHeader}>
-									<div className={s.dialogHeaderTop}>
-										<strong className={s.providerName}>{openIncident.provider_name}</strong>
-										<StatusBadge incident={openIncident} dataAsOfLabel={dataAsOfLabel} />
+			<Dialog.Root
+				open={openIncident !== null}
+				onOpenChange={(d) => !d.open && close()}
+				initialFocusEl={() => dialogCloseRef.current}
+				finalFocusEl={() => dialogTriggerRef.current}
+			>
+				<Portal>
+					<Dialog.Backdrop className={s.dialogBackdrop} />
+					<Dialog.Positioner className={s.dialogPositioner}>
+						<Dialog.Content className={s.dialogContent}>
+							{openIncident && (
+								<>
+									<div className={s.dialogHeader}>
+										<div className={s.dialogHeaderTop}>
+											<strong className={s.providerName}>{openIncident.provider_name}</strong>
+											<StatusBadge incident={openIncident} dataAsOfLabel={dataAsOfLabel} />
+										</div>
+										<Dialog.CloseTrigger ref={dialogCloseRef} aria-label="Close" className={s.dialogClose}>
+											<span aria-hidden="true">✕</span>
+										</Dialog.CloseTrigger>
 									</div>
-									<Dialog.CloseTrigger aria-label="Close" className={s.dialogClose}>
-										✕
-									</Dialog.CloseTrigger>
-								</div>
-								<Dialog.Title className={s.dialogTitle}>{openIncident.title ?? "(untitled)"}</Dialog.Title>
-								{openIncident.summary && <p className={s.dialogSummary}>{openIncident.summary}</p>}
+									<Dialog.Title className={s.dialogTitle}>{openIncident.title ?? "(untitled)"}</Dialog.Title>
+									{openIncident.summary && <p className={s.dialogSummary}>{openIncident.summary}</p>}
 
-								<div className={s.dialogStatsGrid}>
-									<DialogStat label="Severity (provider's own)" value={openIncident.severity ?? "—"} />
-									<DialogStat label="Duration" value={formatDuration(intl, openIncident.duration_hours)} />
-									<DialogStat
-										label="Time to first update"
-										value={
-											openIncident.time_to_first_update_min !== null
-												? `${intl.formatNumber(openIncident.time_to_first_update_min)} min`
-												: "—"
-										}
-									/>
-									<DialogStat
-										label="Updates · Components"
-										value={
-											openIncident.component_count !== null
-												? `${openIncident.updates_per_hour !== null ? intl.formatNumber(Math.round(openIncident.updates_per_hour * (openIncident.duration_hours ?? 1))) : "—"} updates · ${intl.formatNumber(openIncident.component_count)} components`
-												: "—"
-										}
-									/>
-								</div>
+									<div className={s.dialogStatsGrid}>
+										<DialogStat label="Severity (provider's own)" value={openIncident.severity ?? "—"} />
+										<DialogStat label="Duration" value={formatDuration(intl, openIncident.duration_hours)} />
+										<DialogStat
+											label="Time to first update"
+											value={
+												openIncident.time_to_first_update_min !== null
+													? `${intl.formatNumber(openIncident.time_to_first_update_min)} min`
+													: "—"
+											}
+										/>
+										<DialogStat
+											label="Updates · Components"
+											value={
+												openIncident.component_count !== null
+													? `${openIncident.updates_per_hour !== null ? intl.formatNumber(Math.round(openIncident.updates_per_hour * (openIncident.duration_hours ?? 1))) : "—"} updates · ${intl.formatNumber(openIncident.component_count)} components`
+													: "—"
+											}
+										/>
+									</div>
 
-								<TagRow incident={openIncident} />
+									<TagRow incident={openIncident} />
 
-								<div className={s.dialogProvenanceLabel}>Provenance</div>
-								<dl className={s.dialogMeta}>
-									<dt>Model</dt>
-									<dd>{openIncident.model_used}</dd>
-									<dt>Prompt version</dt>
-									<dd>{openIncident.prompt_version}</dd>
-									<dt>Schema version</dt>
-									<dd>{openIncident.schema_version}</dd>
-									<dt>Interpreted at</dt>
-									<dd>{formatUtcDateTime(intl, openIncident.interpreted_at_utc)}</dd>
-								</dl>
+									<div className={s.dialogProvenanceLabel}>Provenance</div>
+									<dl className={s.dialogMeta}>
+										<dt>Model</dt>
+										<dd>{openIncident.model_used}</dd>
+										<dt>Prompt version</dt>
+										<dd>{openIncident.prompt_version}</dd>
+										<dt>Schema version</dt>
+										<dd>{openIncident.schema_version}</dd>
+										<dt>Interpreted at</dt>
+										<dd>{formatUtcDateTime(intl, openIncident.interpreted_at_utc)}</dd>
+									</dl>
 
-								<div className={s.dialogLinks}>
-									<a href={openIncident.source_url ?? "#"} className={s.dialogSourceLink}>
-										↗ {openIncident.source_is_fallback ? "Provider status page" : "Source"}
-									</a>
-									<a href={reportErrorUrl(openIncident, permalinkFor(openIncident))} className={s.dialogSourceLink}>
-										⚑ Report an error
-									</a>
-								</div>
-							</>
-						)}
-					</Dialog.Content>
-				</Dialog.Positioner>
+									<div className={s.dialogLinks}>
+										<a href={openIncident.source_url ?? "#"} className={s.dialogSourceLink}>
+											<span aria-hidden="true">↗</span> {openIncident.source_is_fallback ? "Provider status page" : "Source"}
+										</a>
+										<a href={reportErrorUrl(openIncident, permalinkFor(openIncident))} className={s.dialogSourceLink}>
+											<span aria-hidden="true">⚑</span> Report an error
+										</a>
+									</div>
+								</>
+							)}
+						</Dialog.Content>
+					</Dialog.Positioner>
+				</Portal>
 			</Dialog.Root>
 		</div>
 	);
@@ -391,7 +417,7 @@ function DialogStat({ label, value }: { label: string; value: string }) {
 }
 
 function StatusBadge({ incident, dataAsOfLabel }: { incident: Incident; dataAsOfLabel: string }) {
-	if (incident.is_open) return <span className={s.chip("amber.100")}>Open as of {dataAsOfLabel}</span>;
-	if (incident.is_retroactive) return <span className={s.chip("purple.100")}>Published after resolution</span>;
-	return <span className={s.chip("green.100")}>Resolved</span>;
+	if (incident.is_open) return <span className={s.chip("amber")} aria-label={`Status: open as of ${dataAsOfLabel}`}>Open as of {dataAsOfLabel}</span>;
+	if (incident.is_retroactive) return <span className={s.chip("purple")} aria-label="Status: published after resolution">Published after resolution</span>;
+	return <span className={s.chip("green")} aria-label="Status: resolved">Resolved</span>;
 }
