@@ -38,18 +38,20 @@ export function formatDuration(intl: IntlShape, hours: number | null): string {
 	return `${intl.formatNumber(hours, { maximumFractionDigits: 1 })}h`;
 }
 
-// Every timestamp in this product is UTC, always — the spec's staleness
-// guarantee depends on that being explicit and never silently swapped for
-// the viewer's local time. Locale only changes numeral/date-ordering
-// conventions here, never the timezone itself.
-export function formatUtcDate(intl: IntlShape, iso: string): string {
-	return intl.formatDate(iso, { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" });
+// Shown in the viewer's own local timezone (not a fixed UTC), per user
+// request — the datetime variant labels the zone explicitly (via
+// timeZoneName) so a screenshot shared across timezones isn't ambiguous
+// about what time it actually shows. `dailyCounts` below stays bucketed in
+// UTC regardless — that's a computed daily aggregate, not a display string,
+// and changing its bucketing has its own tradeoffs.
+export function formatLocalDate(intl: IntlShape, iso: string): string {
+	return intl.formatDate(iso, { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
-export function formatUtcDateTime(intl: IntlShape, iso: string): string {
-	const date = intl.formatDate(iso, { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" });
-	const time = intl.formatTime(iso, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
-	return `${date} ${time} UTC`;
+export function formatLocalDateTime(intl: IntlShape, iso: string): string {
+	const date = intl.formatDate(iso, { year: "numeric", month: "2-digit", day: "2-digit" });
+	const time = intl.formatTime(iso, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "short" });
+	return `${date} ${time}`;
 }
 
 const ISSUE_REPO = "ronniechong/status-quo";

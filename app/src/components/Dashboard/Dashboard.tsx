@@ -3,7 +3,7 @@ import { Combobox, Dialog, Portal, createListCollection } from "@ark-ui/react";
 import { IntlProvider, useIntl, type IntlShape } from "react-intl";
 import TrendChart from "../TrendChart/TrendChart";
 import type { CoverageEntry, Incident } from "../../lib/types";
-import { medianDurationHours, formatDuration, formatUtcDate, formatUtcDateTime, dailyCounts, reportErrorUrl, severityColorScale } from "../../lib/incidents";
+import { medianDurationHours, formatDuration, formatLocalDate, formatLocalDateTime, dailyCounts, reportErrorUrl, severityColorScale } from "../../lib/incidents";
 import { useHashRoute } from "../../lib/useHashRoute";
 import { useLocale } from "../../lib/useLocale";
 import * as s from "./Dashboard.css";
@@ -32,7 +32,7 @@ const WEEK_MS = 7 * 86_400_000;
 function formatCardTimestamp(intl: IntlShape, incident: Incident): string {
 	const iso = incident.created_at ?? incident.incident_updated_at_utc;
 	if (!iso) return "";
-	const label = formatUtcDate(intl, iso);
+	const label = formatLocalDate(intl, iso);
 	return incident.duration_hours !== null ? `${label} · ${formatDuration(intl, incident.duration_hours)}` : label;
 }
 
@@ -47,7 +47,7 @@ export default function Dashboard(props: Props) {
 
 function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 	const intl = useIntl();
-	const dataAsOfLabel = formatUtcDateTime(intl, dataAsOfIso);
+	const dataAsOfLabel = formatLocalDateTime(intl, dataAsOfIso);
 	const [rangeHours, setRangeHours] = useState(24 * 7);
 	const [selectedProviders, setSelectedProviders] = useState<string[]>(coverage.map((c) => c.provider_id));
 	const [feedShown, setFeedShown] = useState(FEED_PAGE_SIZE);
@@ -363,7 +363,7 @@ function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
 										<dt>Schema version</dt>
 										<dd>{openIncident.schema_version}</dd>
 										<dt>Interpreted at</dt>
-										<dd>{formatUtcDateTime(intl, openIncident.interpreted_at_utc)}</dd>
+										<dd>{formatLocalDateTime(intl, openIncident.interpreted_at_utc)}</dd>
 									</dl>
 
 									<div className={s.dialogLinks}>
