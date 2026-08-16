@@ -3,6 +3,7 @@ import { Combobox, Dialog, createListCollection } from "@ark-ui/react";
 import TrendChart from "../TrendChart/TrendChart";
 import type { CoverageEntry, Incident } from "../../lib/types";
 import { medianDurationHours, formatDuration, dailyCounts } from "../../lib/incidents";
+import { useHashRoute } from "../../lib/useHashRoute";
 import * as s from "./Dashboard.css";
 
 interface Props {
@@ -25,7 +26,18 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 	const [rangeHours, setRangeHours] = useState(24 * 7);
 	const [selectedProviders, setSelectedProviders] = useState<string[]>(coverage.map((c) => c.provider_id));
 	const [feedShown, setFeedShown] = useState(FEED_PAGE_SIZE);
-	const [openIncident, setOpenIncident] = useState<Incident | null>(null);
+
+	const { hash, navigate, close } = useHashRoute();
+	const openIncident = useMemo(() => {
+		const m = hash.match(/^#\/incident\/([^/]+)\/(.+)$/);
+		if (!m) return null;
+		const [, providerId, incidentId] = m;
+		return incidents.find((i) => i.provider_id === providerId && i.incident_id === decodeURIComponent(incidentId)) ?? null;
+	}, [hash, incidents]);
+
+	function openIncidentModal(incident: Incident) {
+		navigate(`#/incident/${incident.provider_id}/${encodeURIComponent(incident.incident_id)}`);
+	}
 
 	const providerCollection = useMemo(
 		() => createListCollection({ items: coverage.map((c) => ({ value: c.provider_id, label: c.provider_name })) }),
@@ -118,7 +130,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 
 			<div className={s.feedList}>
 				{feed.map((incident) => (
-					<button key={`${incident.provider_id}-${incident.incident_id}`} onClick={() => setOpenIncident(incident)} className={s.card}>
+					<button key={`${incident.provider_id}-${incident.incident_id}`} onClick={() => openIncidentModal(incident)} className={s.card}>
 						<div className={s.cardHeader}>
 							<strong>{incident.provider_name}</strong>
 							<StatusBadge incident={incident} dataAsOfLabel={dataAsOfLabel} />
@@ -160,7 +172,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 				</div>
 			</section>
 
-			<Dialog.Root open={openIncident !== null} onOpenChange={(d) => !d.open && setOpenIncident(null)}>
+			<Dialog.Root open={openIncident !== null} onOpenChange={(d) => !d.open && close()}>
 				<Dialog.Backdrop className={s.dialogBackdrop} />
 				<Dialog.Positioner className={s.dialogPositioner}>
 					<Dialog.Content className={s.dialogContent}>

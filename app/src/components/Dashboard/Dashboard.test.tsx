@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import Dashboard from "./Dashboard";
 import type { CoverageEntry, Incident } from "../../lib/types";
 
@@ -67,15 +67,33 @@ describe("Dashboard", () => {
 		expect(statValue("Incidents in window")).toBe("1"); // now included
 	});
 
-	it("opens the detail modal with the incident's title when a card is clicked", () => {
+	it("opens the detail modal with the incident's title when a card is clicked", async () => {
 		const incidents = [makeIncident({ incident_id: "recent", title: "Real title here", incident_updated_at_utc: hoursAgo(2) })];
 		render(<Dashboard incidents={incidents} coverage={coverage} dataAsOfLabel="2026-08-16 00:00 UTC" />);
 		fireEvent.click(screen.getByRole("button", { name: /Real title here/ }));
-		expect(screen.getAllByText("Real title here").length).toBeGreaterThan(0);
+		await waitFor(() => expect(screen.getAllByText("Real title here").length).toBeGreaterThan(1));
 	});
 
 	it("flags a provider with a collection gap in the coverage strip", () => {
 		render(<Dashboard incidents={[]} coverage={coverage} dataAsOfLabel="2026-08-16 00:00 UTC" />);
 		expect(screen.getByText(/Netlify.*collection gap/)).toBeTruthy();
+	});
+
+	it("updates the URL hash to a permalink when a card is opened, and clears it on close", async () => {
+		const incidents = [makeIncident({ incident_id: "abc123", provider_id: "github", incident_updated_at_utc: hoursAgo(2) })];
+		window.history.pushState(null, "", "/status-quo/");
+		render(<Dashboard incidents={incidents} coverage={coverage} dataAsOfLabel="2026-08-16 00:00 UTC" />);
+		fireEvent.click(screen.getByRole("button", { name: /Elevated error rates/ }));
+		expect(window.location.hash).toBe("#/incident/github/abc123");
+		await waitFor(() => screen.getByRole("button", { name: /close/i }));
+		fireEvent.click(screen.getByRole("button", { name: /close/i }));
+		await waitFor(() => expect(window.location.hash).toBe(""));
+	});
+
+	it("opens the modal directly when the page loads with a matching permalink hash", async () => {
+		const incidents = [makeIncident({ incident_id: "abc123", provider_id: "github", title: "Deep-linked incident", incident_updated_at_utc: hoursAgo(2) })];
+		window.history.pushState(null, "", "/status-quo/#/incident/github/abc123");
+		render(<Dashboard incidents={incidents} coverage={coverage} dataAsOfLabel="2026-08-16 00:00 UTC" />);
+		await waitFor(() => expect(screen.getAllByText("Deep-linked incident").length).toBeGreaterThan(0));
 	});
 });
