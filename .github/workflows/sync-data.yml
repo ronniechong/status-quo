@@ -50,3 +50,20 @@ jobs:
             git commit -m "chore(data): sync dashboard data from HuggingFace"
             git push
           fi
+
+      - name: Notify success
+        if: success()
+        run: |
+          curl -H "Title: Status Quo data sync succeeded" \
+               -H "Tags: white_check_mark" \
+               -d "Dashboard data synced from HuggingFace. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+               https://ntfy.sh/status-quo-notifications
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          curl -H "Title: Status Quo data sync FAILED" \
+               -H "Tags: x,warning" \
+               -H "Priority: high" \
+               -d "Sync workflow failed. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+               https://ntfy.sh/status-quo-notifications
