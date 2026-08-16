@@ -24,7 +24,8 @@
     "@visx/tooltip": "^4.0.0",
     "astro": "^7.2.2",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-intl": "^10.1.20"
   },
   "devDependencies": {
     "@pandacss/dev": "^1.12.0",

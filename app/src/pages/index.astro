@@ -4,14 +4,12 @@ import { loadMeta, loadIncidents, loadCoverage } from "../lib/loader";
 import { css } from "../../styled-system/css";
 import Dashboard from "../components/Dashboard/Dashboard";
 import HowThisWorksLink from "../components/HowThisWorks/HowThisWorksLink";
+import DataAsOf from "../components/DataAsOf/DataAsOf";
 import LogoMark from "../assets/logo-mark.svg?raw";
 
 const meta = loadMeta();
 const allIncidents = loadIncidents();
 const coverage = loadCoverage();
-
-const dataAsOf = new Date(meta.generated_at_utc);
-const dataAsOfLabel = `${dataAsOf.toISOString().slice(0, 10)} ${dataAsOf.toISOString().slice(11, 16)} UTC`;
 ---
 
 <Layout>
@@ -40,7 +38,7 @@ const dataAsOfLabel = `${dataAsOf.toISOString().slice(0, 10)} ${dataAsOf.toISOSt
 				</div>
 				<div class={css({ fontFamily: "monospace", fontSize: "xs", color: "ink.700", textAlign: "right" })}>
 					Data as of<br />
-					<strong>{dataAsOfLabel}</strong>
+					<DataAsOf client:load iso={meta.generated_at_utc} />
 				</div>
 			</div>
 		</header>
@@ -70,7 +68,7 @@ const dataAsOfLabel = `${dataAsOf.toISOString().slice(0, 10)} ${dataAsOf.toISOSt
 				</span>
 			</div>
 
-			<Dashboard client:load incidents={allIncidents} coverage={coverage} dataAsOfLabel={dataAsOfLabel} />
+			<Dashboard client:load incidents={allIncidents} coverage={coverage} dataAsOfIso={meta.generated_at_utc} />
 
 			<footer class={css({ fontSize: "xs", color: "ink.700", borderTop: "1px solid", borderColor: "cream.300", pt: "3", mt: "4" })}>
 				<p class={css({ m: "0", mb: "2" })}>

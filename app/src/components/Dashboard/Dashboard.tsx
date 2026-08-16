@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react";
 import { Combobox, Dialog, createListCollection } from "@ark-ui/react";
+import { IntlProvider, useIntl, type IntlShape } from "react-intl";
 import TrendChart from "../TrendChart/TrendChart";
 import type { CoverageEntry, Incident } from "../../lib/types";
-import { medianDurationHours, formatDuration, dailyCounts, reportErrorUrl, severityColorScale } from "../../lib/incidents";
+import { medianDurationHours, formatDuration, formatUtcDate, formatUtcDateTime, dailyCounts, reportErrorUrl, severityColorScale } from "../../lib/incidents";
 import { useHashRoute } from "../../lib/useHashRoute";
+import { useLocale } from "../../lib/useLocale";
 import * as s from "./Dashboard.css";
 
 interface Props {
 	incidents: Incident[];
 	coverage: CoverageEntry[];
-	dataAsOfLabel: string;
+	dataAsOfIso: string;
 }
 
 const RANGE_GROUPS = [
@@ -27,15 +29,25 @@ const RANGE_GROUPS = [
 const FEED_PAGE_SIZE = 10;
 const WEEK_MS = 7 * 86_400_000;
 
-function formatCardTimestamp(incident: Incident): string {
+function formatCardTimestamp(intl: IntlShape, incident: Incident): string {
 	const iso = incident.created_at ?? incident.incident_updated_at_utc;
 	if (!iso) return "";
-	const date = new Date(iso);
-	const label = `${date.toISOString().slice(0, 10)}`;
-	return incident.duration_hours !== null ? `${label} · ${formatDuration(incident.duration_hours)}` : label;
+	const label = formatUtcDate(intl, iso);
+	return incident.duration_hours !== null ? `${label} · ${formatDuration(intl, incident.duration_hours)}` : label;
 }
 
-export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props) {
+export default function Dashboard(props: Props) {
+	const locale = useLocale();
+	return (
+		<IntlProvider locale={locale} defaultLocale="en-US">
+			<DashboardInner {...props} />
+		</IntlProvider>
+	);
+}
+
+function DashboardInner({ incidents, coverage, dataAsOfIso }: Props) {
+	const intl = useIntl();
+	const dataAsOfLabel = formatUtcDateTime(intl, dataAsOfIso);
 	const [rangeHours, setRangeHours] = useState(24 * 7);
 	const [selectedProviders, setSelectedProviders] = useState<string[]>(coverage.map((c) => c.provider_id));
 	const [feedShown, setFeedShown] = useState(FEED_PAGE_SIZE);
@@ -98,10 +110,10 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 	return (
 		<div>
 			<div className={s.statsGrid}>
-				<Stat label="Incidents in window" value={String(windowIncidents.length)} />
-				<Stat label="Providers affected" value={`${providersAffected}/${coverage.length}`} />
-				<Stat label="Median duration" value={formatDuration(median)} />
-				<Stat label="Open at last check" value={String(openIncidents.length)} />
+				<Stat label="Incidents in window" value={intl.formatNumber(windowIncidents.length)} />
+				<Stat label="Providers affected" value={`${intl.formatNumber(providersAffected)}/${intl.formatNumber(coverage.length)}`} />
+				<Stat label="Median duration" value={formatDuration(intl, median)} />
+				<Stat label="Open at last check" value={intl.formatNumber(openIncidents.length)} />
 			</div>
 
 			<div className={s.trendCard}>
@@ -109,7 +121,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 					<span>Incidents per day, last 30 days</span>
 					<span>Shaded = selected window</span>
 				</div>
-				<TrendChart data={trend} selectedWindowDays={selectedWindowDays} />
+				<TrendChart data={trend} selectedWindowDays={selectedWindowDays} locale={intl.locale} />
 			</div>
 
 			<div className={s.filterRow}>
@@ -146,7 +158,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 					<Combobox.Label className={s.comboboxLabel}>Providers</Combobox.Label>
 					<Combobox.Control className={s.comboboxControl}>
 						<span className={s.comboboxSummary}>
-							{selectedProviders.length === coverage.length ? "All providers" : `${selectedProviders.length} providers`}
+							{selectedProviders.length === coverage.length ? "All providers" : `${intl.formatNumber(selectedProviders.length)} providers`}
 						</span>
 						<Combobox.Trigger className={s.comboboxTrigger}>▾</Combobox.Trigger>
 					</Combobox.Control>
@@ -166,20 +178,20 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 										<Combobox.ItemIndicator className={s.comboboxCheckbox}>✓</Combobox.ItemIndicator>
 										<Combobox.ItemText>{item.label}</Combobox.ItemText>
 										<span className={s.comboboxItemMeta}>
-											{isShortHistory && <span className={s.comboboxItemBadge}>{weeksCollected} wks</span>}
+											{isShortHistory && <span className={s.comboboxItemBadge}>{intl.formatNumber(weeksCollected)} wks</span>}
 											{hasGap && (
 												<span title="collection gap" aria-label="collection gap">
 													⚠
 												</span>
 											)}
-											{count === 0 ? "none" : `${count} incident${count === 1 ? "" : "s"}`}
+											{count === 0 ? "none" : `${intl.formatNumber(count)} incident${count === 1 ? "" : "s"}`}
 										</span>
 									</Combobox.Item>
 								);
 							})}
 							<div className={s.comboboxFooter}>
 								{providerSearch
-									? `${filteredProviderItems.length} of ${providerCollection.items.length} match '${providerSearch}' · `
+									? `${intl.formatNumber(filteredProviderItems.length)} of ${intl.formatNumber(providerCollection.items.length)} match '${providerSearch}' · `
 									: ""}
 								counts are for the selected window
 							</div>
@@ -212,7 +224,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 								<button onClick={() => openIncidentModal(incident)} className={s.cardMain}>
 									<div className={s.cardHeader}>
 										<strong className={s.providerName}>{incident.provider_name}</strong>
-										<span className={s.cardTimestamp}>{formatCardTimestamp(incident)}</span>
+										<span className={s.cardTimestamp}>{formatCardTimestamp(intl, incident)}</span>
 									</div>
 									<h3 className={s.cardTitle}>{incident.title ?? "(untitled)"}</h3>
 									{incident.summary && <p className={s.cardSummary}>{incident.summary}</p>}
@@ -252,7 +264,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 						Show more
 					</button>
 					<div className={s.showMoreCaption}>
-						Showing {feed.length} of {windowIncidents.length} incidents
+						Showing {intl.formatNumber(feed.length)} of {intl.formatNumber(windowIncidents.length)} incidents
 					</div>
 				</div>
 			)}
@@ -267,7 +279,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 						return (
 							<span key={c.provider_id} className={s.coverageChip(state)}>
 								{hasGap ? "⚠ " : "✓ "}
-								{c.provider_name} — {hasGap ? "collection gap" : count > 0 ? `${count} reported` : "none reported"}
+								{c.provider_name} — {hasGap ? "collection gap" : count > 0 ? `${intl.formatNumber(count)} reported` : "none reported"}
 							</span>
 						);
 					})}
@@ -294,16 +306,20 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 
 								<div className={s.dialogStatsGrid}>
 									<DialogStat label="Severity (provider's own)" value={openIncident.severity ?? "—"} />
-									<DialogStat label="Duration" value={formatDuration(openIncident.duration_hours)} />
+									<DialogStat label="Duration" value={formatDuration(intl, openIncident.duration_hours)} />
 									<DialogStat
 										label="Time to first update"
-										value={openIncident.time_to_first_update_min !== null ? `${openIncident.time_to_first_update_min} min` : "—"}
+										value={
+											openIncident.time_to_first_update_min !== null
+												? `${intl.formatNumber(openIncident.time_to_first_update_min)} min`
+												: "—"
+										}
 									/>
 									<DialogStat
 										label="Updates · Components"
 										value={
 											openIncident.component_count !== null
-												? `${openIncident.updates_per_hour !== null ? Math.round(openIncident.updates_per_hour * (openIncident.duration_hours ?? 1)) : "—"} updates · ${openIncident.component_count} components`
+												? `${openIncident.updates_per_hour !== null ? intl.formatNumber(Math.round(openIncident.updates_per_hour * (openIncident.duration_hours ?? 1))) : "—"} updates · ${intl.formatNumber(openIncident.component_count)} components`
 												: "—"
 										}
 									/>
@@ -320,7 +336,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 									<dt>Schema version</dt>
 									<dd>{openIncident.schema_version}</dd>
 									<dt>Interpreted at</dt>
-									<dd>{openIncident.interpreted_at_utc}</dd>
+									<dd>{formatUtcDateTime(intl, openIncident.interpreted_at_utc)}</dd>
 								</dl>
 
 								<div className={s.dialogLinks}>

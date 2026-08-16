@@ -1,6 +1,7 @@
 // Client-safe pure functions — no Node built-ins, importable from both
 // Astro frontmatter (server) and React islands (browser). Data loading
 // (fs-based) lives in loader.ts instead, which only .astro files import.
+import type { IntlShape } from "react-intl";
 import type { DailyCount, Incident } from "./types";
 
 export type { DailyCount } from "./types";
@@ -26,10 +27,29 @@ export function medianDurationHours(incidents: Incident[]): number | null {
 	return durations.length % 2 === 0 ? (durations[mid - 1] + durations[mid]) / 2 : durations[mid];
 }
 
-export function formatDuration(hours: number | null): string {
+// Only the numeral goes through Intl (locale-correct digits/decimal
+// separator) — the "m"/"h" suffix stays a literal. Intl's unit-style
+// "narrow" display depends on CLDR data that isn't guaranteed identical
+// between Node's bundled ICU (build-time SSR) and the browser's (client
+// hydration), which was producing real hydration mismatches.
+export function formatDuration(intl: IntlShape, hours: number | null): string {
 	if (hours === null) return "—";
-	if (hours < 1) return `${Math.round(hours * 60)}m`;
-	return `${hours.toFixed(1)}h`;
+	if (hours < 1) return `${intl.formatNumber(Math.round(hours * 60))}m`;
+	return `${intl.formatNumber(hours, { maximumFractionDigits: 1 })}h`;
+}
+
+// Every timestamp in this product is UTC, always — the spec's staleness
+// guarantee depends on that being explicit and never silently swapped for
+// the viewer's local time. Locale only changes numeral/date-ordering
+// conventions here, never the timezone itself.
+export function formatUtcDate(intl: IntlShape, iso: string): string {
+	return intl.formatDate(iso, { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" });
+}
+
+export function formatUtcDateTime(intl: IntlShape, iso: string): string {
+	const date = intl.formatDate(iso, { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" });
+	const time = intl.formatTime(iso, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "UTC" });
+	return `${date} ${time} UTC`;
 }
 
 const ISSUE_REPO = "ronniechong/status-quo";

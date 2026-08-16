@@ -12,6 +12,7 @@ interface Props {
 	// window — shaded on the chart per spec §7, since the chart's own scope
 	// (fixed 30 days) is wider than what the aggregate strip describes.
 	selectedWindowDays: number;
+	locale: string;
 }
 
 function useIsNarrow() {
@@ -27,7 +28,9 @@ function useIsNarrow() {
 	return isNarrow;
 }
 
-export default function TrendChart({ data: fullData, selectedWindowDays: fullSelectedWindowDays }: Props) {
+export default function TrendChart({ data: fullData, selectedWindowDays: fullSelectedWindowDays, locale }: Props) {
+	const tickDateFormat = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", timeZone: "UTC" });
+	const numberFormat = new Intl.NumberFormat(locale);
 	// Narrow viewports show fewer trailing days rather than compressing bars
 	// below legibility, per spec §16 — the shaded overlay still tracks the
 	// (clamped) selected window within whatever's visible.
@@ -74,6 +77,7 @@ export default function TrendChart({ data: fullData, selectedWindowDays: fullSel
 				{data.map((d, i) => {
 					const barHeight = innerHeight - (yScale(d.count) ?? 0);
 					const barX = xScale(d.date) ?? 0;
+					const titleText = `${tickDateFormat.format(new Date(`${d.date}T00:00:00Z`))}: ${numberFormat.format(d.count)} incident${d.count === 1 ? "" : "s"}`;
 					return (
 						<Bar
 							key={d.date}
@@ -83,9 +87,7 @@ export default function TrendChart({ data: fullData, selectedWindowDays: fullSel
 							height={barHeight}
 							fill={i >= shadedFrom ? colors.barSelected : colors.bar}
 						>
-							<title>
-								{d.date}: {d.count} incident{d.count === 1 ? "" : "s"}
-							</title>
+							<title>{titleText}</title>
 						</Bar>
 					);
 				})}
@@ -94,6 +96,7 @@ export default function TrendChart({ data: fullData, selectedWindowDays: fullSel
 					numTicks={3}
 					stroke={colors.axis}
 					tickStroke={colors.axis}
+					tickFormat={(v) => numberFormat.format(v as number)}
 					tickLabelProps={() => ({ fontSize: 10, fill: colors.tickLabel, dx: -4 })}
 				/>
 				<AxisBottom
@@ -102,6 +105,7 @@ export default function TrendChart({ data: fullData, selectedWindowDays: fullSel
 					stroke={colors.axis}
 					tickStroke={colors.axis}
 					tickValues={[...tickDates]}
+					tickFormat={(v) => tickDateFormat.format(new Date(`${v}T00:00:00Z`))}
 					tickLabelProps={() => ({ fontSize: 10, fill: colors.tickLabel })}
 				/>
 			</Group>
