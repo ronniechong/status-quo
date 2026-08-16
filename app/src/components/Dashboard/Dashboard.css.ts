@@ -69,6 +69,28 @@ export const showMoreButton = css({
 });
 export const showMoreCaption = css({ fontSize: "xs", color: "gray.400", mt: "1" });
 
+export const emptyState = css({
+	textAlign: "center",
+	py: "6",
+	px: "3",
+	color: "gray.500",
+	fontSize: "sm",
+	border: "1px dashed",
+	borderColor: "gray.300",
+	borderRadius: "md",
+});
+export const emptyStateAction = css({
+	display: "inline-block",
+	mt: "2",
+	fontSize: "sm",
+	color: "blue.700",
+	bg: "none",
+	border: "none",
+	cursor: "pointer",
+	textDecoration: "underline",
+	font: "inherit",
+});
+
 export const coverageSection = css({ mt: "6", p: "3", bg: "gray.50", borderRadius: "md" });
 export const coverageLabel = css({ fontSize: "xs", color: "gray.500", mb: "2" });
 export const coverageChips = css({ display: "flex", gap: "2", flexWrap: "wrap" });

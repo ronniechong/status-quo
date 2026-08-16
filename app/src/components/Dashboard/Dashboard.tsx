@@ -137,6 +137,21 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 				</Combobox.Root>
 			</div>
 
+			{windowIncidents.length === 0 ? (
+				<div className={s.emptyState} role="status">
+					No incidents reported by the selected providers in this window.
+					<br />
+					<button
+						className={s.emptyStateAction}
+						onClick={() => {
+							selectRange(24 * 90);
+							setSelectedProviders(coverage.map((c) => c.provider_id));
+						}}
+					>
+						Widen to 90 days, all providers
+					</button>
+				</div>
+			) : (
 			<div className={s.feedList}>
 				{feed.map((incident) => (
 					<div key={`${incident.provider_id}-${incident.incident_id}`} className={s.card}>
@@ -167,6 +182,7 @@ export default function Dashboard({ incidents, coverage, dataAsOfLabel }: Props)
 					</div>
 				))}
 			</div>
+			)}
 
 			{feedShown < windowIncidents.length && (
 				<div className={s.showMoreWrap}>
