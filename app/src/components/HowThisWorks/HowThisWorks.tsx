@@ -8,9 +8,10 @@ interface Props {
 	triggerRef: React.RefObject<HTMLElement | null>;
 	defaultModel: string;
 	defaultPromptVersion: string;
+	providerCount: number;
 }
 
-export default function HowThisWorks({ open, onOpenChange, triggerRef, defaultModel, defaultPromptVersion }: Props) {
+export default function HowThisWorks({ open, onOpenChange, triggerRef, defaultModel, defaultPromptVersion, providerCount }: Props) {
 	const closeRef = useRef<HTMLButtonElement>(null);
 	useEffect(() => {
 		if (!open) return;
@@ -46,8 +47,9 @@ export default function HowThisWorks({ open, onOpenChange, triggerRef, defaultMo
 					<div className={s.section}>
 						<div className={s.heading}>Collection</div>
 						<p className={s.body}>
-							Ten providers, polled roughly every 6 hours. Collection depth varies by provider because each one caps how
-							much of its own incident history it exposes — nothing is backfilled beyond what a provider's API returns.
+							{providerCount} providers, polled roughly every 6 hours. Collection depth varies by provider because each
+							one caps how much of its own incident history it exposes — nothing is backfilled beyond what a provider's
+							API returns. A newly-added provider starts collecting from the day it's added, not retroactively.
 						</p>
 					</div>
 

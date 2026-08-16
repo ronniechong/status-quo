@@ -44,7 +44,11 @@ export default function App() {
 					<code>{meta.default_schema_version}</code> — exceptions flagged per incident
 				</span>
 				<span className={s.provenanceLink}>
-					<HowThisWorksLink defaultModel={meta.default_model} defaultPromptVersion={meta.default_prompt_version} />
+					<HowThisWorksLink
+						defaultModel={meta.default_model}
+						defaultPromptVersion={meta.default_prompt_version}
+						providerCount={coverage.length}
+					/>
 				</span>
 			</div>
 

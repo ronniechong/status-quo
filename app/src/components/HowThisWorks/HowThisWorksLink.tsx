@@ -5,9 +5,10 @@ import HowThisWorks from "./HowThisWorks";
 interface Props {
 	defaultModel: string;
 	defaultPromptVersion: string;
+	providerCount: number;
 }
 
-export default function HowThisWorksLink({ defaultModel, defaultPromptVersion }: Props) {
+export default function HowThisWorksLink({ defaultModel, defaultPromptVersion, providerCount }: Props) {
 	const { hash, navigate, close } = useHashRoute();
 	const open = hash === "#/how-this-works";
 	const linkRef = useRef<HTMLAnchorElement>(null);
@@ -30,6 +31,7 @@ export default function HowThisWorksLink({ defaultModel, defaultPromptVersion }:
 				triggerRef={linkRef}
 				defaultModel={defaultModel}
 				defaultPromptVersion={defaultPromptVersion}
+				providerCount={providerCount}
 			/>
 		</>
 	);
