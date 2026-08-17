@@ -47,7 +47,7 @@ export default function HowThisWorks({ open, onOpenChange, triggerRef, defaultMo
 					<div className={s.section}>
 						<div className={s.heading}>Collection</div>
 						<p className={s.body}>
-							{providerCount} providers, polled roughly every 6 hours. Collection depth varies by provider because each
+							{providerCount} providers, polled roughly every 12 hours. Collection depth varies by provider because each
 							one caps how much of its own incident history it exposes — nothing is backfilled beyond what a provider's
 							API returns. A newly-added provider starts collecting from the day it's added, not retroactively.
 						</p>

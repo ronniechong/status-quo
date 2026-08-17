@@ -8,8 +8,8 @@ name: Sync dashboard data
 
 on:
   schedule:
-    # 20 minutes after each ~6-hourly export (00:40/06:40/12:40/18:40 UTC).
-    - cron: "40 */6 * * *"
+    # 40 minutes after every other export (00:40/12:40 UTC).
+    - cron: "40 */12 * * *"
   workflow_dispatch: {}
 
 permissions:

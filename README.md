@@ -15,12 +15,12 @@ it's never asked to do, and how prompt changes get versioned/validated.
 
 - `service/` — the collection/interpretation pipeline (Python), runs as a
   long-running Docker container with an internal scheduler (supercronic),
-  not host-level cron. Fetches every ~6h, interprets newly-resolved
+  not host-level cron. Fetches every ~12h, interprets newly-resolved
   incidents, exports to a private HuggingFace dataset ~20min later.
 - `app/` — the public dashboard (Astro + React islands, static site),
   deployed to GitHub Pages.
 - `dashboard-data/` — JSON snapshots synced from HuggingFace by a scheduled
-  GitHub Actions workflow (`sync-data.yml`, ~6-hourly) and fetched
+  GitHub Actions workflow (`sync-data.yml`, ~12-hourly) and fetched
   client-side by the dashboard at page load. Deliberately outside `app/` so
   a data sync never triggers an app rebuild.
 

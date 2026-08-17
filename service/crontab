@@ -1,6 +1,6 @@
 # supercronic crontab — runs inside the long-running container.
 # Export runs 20 minutes after each fetch (not daily) so the dashboard's
-# real freshness matches the ~6-hourly collection cadence documented in
+# real freshness matches the ~12-hourly collection cadence documented in
 # the UI, rather than lagging up to ~25h behind on a once-daily export.
-0 */6 * * * status-quo fetch
-20 */6 * * * status-quo export
+0 */12 * * * status-quo fetch
+20 */12 * * * status-quo export
