@@ -15,7 +15,7 @@ it's never asked to do, and how prompt changes get versioned/validated.
 
 - `service/` — the collection/interpretation pipeline (Python), runs as a
   long-running Docker container with an internal scheduler (supercronic),
-  not host-level cron. Fetches every ~12h, interprets newly-resolved
+  not host-level cron. Fetches once a day, interprets newly-resolved
   incidents, exports to a private HuggingFace dataset ~20min later.
 - `app/` — the public dashboard (Astro + React islands, static site),
   deployed to GitHub Pages.
