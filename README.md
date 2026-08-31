@@ -20,7 +20,7 @@ it's never asked to do, and how prompt changes get versioned/validated.
 - `app/` — the public dashboard (Astro + React islands, static site),
   deployed to GitHub Pages.
 - `dashboard-data/` — JSON snapshots synced from HuggingFace by a scheduled
-  GitHub Actions workflow (`sync-data.yml`, ~12-hourly) and fetched
+  GitHub Actions workflow (`sync-data.yml`, once a day) and fetched
   client-side by the dashboard at page load. Deliberately outside `app/` so
   a data sync never triggers an app rebuild.
 
